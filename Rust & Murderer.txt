@@ -1,0 +1,79 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    
+    static int[] GetShortestDist(HashSet<int>[] adjList, int S){
+        int N = adjList.Count();
+        
+        int[] res = new int[N];
+        for(int i = 0; i<N; i++){
+            res[i] = -1;
+        }
+        res[S] = 0;
+        
+        List<int> cur = new List<int>();
+        cur.Add(S);
+        int dist = 0;
+        while(cur.Any()){
+            dist++;
+            List<int> next = new List<int>();
+            HashSet<int> mainRoads = new HashSet<int>();
+            foreach(int m in adjList[cur[0]]){
+                mainRoads.Add(m);
+            }
+            for(int i = 1; i<cur.Count(); i++){
+                mainRoads.IntersectWith(adjList[cur[i]]);
+            }
+            
+            for(int i = 0; i<N; i++){
+                if(res[i] == -1 && !mainRoads.Contains(i)){
+                    res[i] = dist;
+                    next.Add(i);
+                }
+            }
+            
+            cur = next;
+        }
+        
+        //Console.WriteLine(dist);
+        
+        return res;
+    }
+    
+    static void Main(String[] args) {
+        int T = int.Parse(Console.ReadLine());
+        for(int t = 0; t<T; t++){
+            var splittedNM = Console.ReadLine().Split(' ').ToArray();
+            int N = int.Parse(splittedNM[0]);
+            int M = int.Parse(splittedNM[1]);
+            
+            var adjList = new HashSet<int>[N];
+            
+            for(int i = 0; i<N; i++){
+                adjList[i] = new HashSet<int>();
+            }
+            
+            for(int i = 0; i<M; i++){
+                var splittedij = Console.ReadLine().Split(' ').ToArray();
+                int ai = int.Parse(splittedij[0]) - 1;
+                int aj = int.Parse(splittedij[1]) - 1;
+                
+                adjList[ai].Add(aj);
+                adjList[aj].Add(ai);
+            }
+            
+            int S = int.Parse(Console.ReadLine())-1;
+            
+            int[] dist = GetShortestDist(adjList, S);
+            
+            for(int i = 0; i<N; i++){
+                if(i != S){
+                    Console.Write(dist[i].ToString() + " ");
+                }
+            }
+            Console.WriteLine();
+        }
+    }
+}

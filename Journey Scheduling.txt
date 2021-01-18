@@ -1,0 +1,81 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    static void Main(String[] args) {
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        JourneyScheduling.Start();
+    }
+}
+public static class JourneyScheduling
+    {
+        public const int MAXCITIES = 100001;
+        public static void Start()
+        {
+            byte[] inputBuffer = new byte[2048000];
+            Stream inputStream = Console.OpenStandardInput(inputBuffer.Length);
+            Console.SetIn(new StreamReader(inputStream, Console.InputEncoding, false, inputBuffer.Length));
+            List<int>[] adjacentMatrix = new List<int>[2*MAXCITIES];
+            int diameter = 0, furthest = 0;
+            int[] distanceList = new int[MAXCITIES];
+            for (int i = 0; i < 2 * MAXCITIES; i++)
+                adjacentMatrix[i] = new List<int>();
+
+            string[] nm = Console.ReadLine().Split(' ');
+
+            int numberOfCities = int.Parse(nm[0]);
+            int numberOfJourneys = int.Parse(nm[1]);
+
+            for (int i=0;i<numberOfCities-1;i++)
+            {
+                string[] xy = Console.ReadLine().Split(' ');
+                int cityX = int.Parse(xy[0]);
+                int cityY = int.Parse(xy[1]);
+                --cityX;
+                --cityY;
+                adjacentMatrix[cityX].Add(cityY);
+                adjacentMatrix[cityY].Add(cityX);
+            }
+
+            // calculate furthest from first endpoint to the other 
+            DepthFirstSearch(furthest, -1, 0, adjacentMatrix, distanceList, ref diameter, ref furthest);
+            //calculate furthest from second endpoint to the other nodes
+            DepthFirstSearch(furthest, -1, 0, adjacentMatrix, distanceList, ref diameter, ref furthest);
+            //update the distance to furthest found
+            DepthFirstSearch(furthest, -1, 0, adjacentMatrix, distanceList, ref diameter, ref furthest);
+
+            List<long> answers = new List<long>();
+            for (int i=0;i< numberOfJourneys;i++)
+            {
+                string[] vk = Console.ReadLine().Split(' ');
+                int startCity = int.Parse(vk[0]);
+                int totalCitiesToVisit = int.Parse(vk[1]);
+                --startCity;
+                long answer = 0L + (long) distanceList[startCity] + 1L * (totalCitiesToVisit - 1) * diameter;
+                answers.Add(answer);
+            }
+
+            foreach (long answer in answers)
+                Console.WriteLine(answer);
+        }
+
+        static void DepthFirstSearch(int cur, int prev, int d, List<int>[] adjList,
+            int[] dist, ref int diameter, ref int farthest)
+        {
+            dist[cur] = Math.Max(dist[cur], d);
+            if (diameter < d)
+            {
+                diameter = d;
+                farthest = cur;
+            }
+
+            for (int i = 0; i < adjList[cur].Count(); ++i)
+            {
+                int v = adjList[cur][i];
+                if (v != prev)
+                    DepthFirstSearch(v, cur, d + 1,adjList,dist,ref diameter,ref farthest);
+            }
+        }
+
+    }

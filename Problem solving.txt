@@ -1,0 +1,64 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Problem_solving
+{
+    class Program
+    {
+        static bool[,] m;
+        static bool[] used;
+        static int[] r;
+
+        static bool can(int x)
+        {
+            if (used[x])
+                return false;
+            used[x] = true;
+
+            int N = used.Length;
+            for(int i = 0; i < N; i++)
+                if (m[x, i])
+                {
+                    if (r[i] == -1 || can(r[i]))
+                    {
+                        r[i] = x;
+                        return true;
+                    }
+                }
+
+            return false;
+        }
+
+        static void Main(string[] args)
+        {
+            int T = int.Parse(Console.ReadLine());
+            for (int t = 0; t < T; t++)
+            {
+                string[] line = Console.ReadLine().Split();
+                int N = int.Parse(line[0]);
+                int K = int.Parse(line[1]);
+                int[] v = Array.ConvertAll(Console.ReadLine().Split(), int.Parse);
+
+                m = new bool[N, N];
+                for (int i = 0; i < N - 1; i++)
+                    for (int j = i + 1; j < N; j++)
+                        m[i, j] = Math.Abs(v[j] - v[i]) >= K;
+
+                used = new bool[N];
+                r = new int[N];
+                for (int i = 0; i < N; i++)
+                    r[i] = -1;
+
+                for (int i = 0; i < N; i++)
+                {
+                    Array.Clear(used, 0, used.Length);
+                    can(i);
+                }
+
+                Console.WriteLine(r.Count(x => x == -1));
+            }
+        }
+    }
+}
