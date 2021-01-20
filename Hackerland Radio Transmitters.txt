@@ -1,0 +1,49 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+
+    static void Main(String[] args) {
+        string[] tokens_n = Console.ReadLine().Split(' ');
+        int k = Convert.ToInt32(tokens_n[1]);
+        string[] x_temp = Console.ReadLine().Split(' ');
+        int[] x = Array.ConvertAll(x_temp,Int32.Parse).OrderBy(y => y).ToArray();;
+        int count = 0;
+        int pre_value = 0;
+        int post_value = 0;
+        int current_start_of_diapason = x[0];
+        bool isBefore = true;
+        for (var i = 0; i < x.Length; i++) {
+            if (isBefore && x[i] <= current_start_of_diapason + k) {
+                pre_value = x[i];
+             //   Console.WriteLine("preValue: " + pre_value);
+                continue;
+            }
+            
+            if (isBefore == true) {
+                isBefore = false;
+                count++;
+            }
+            
+             if (!isBefore) {
+                 if (x[i] <= pre_value + k) {
+                    post_value = x[i];
+                  //   Console.WriteLine("post_value: " + pre_value);
+                 } else {
+                     isBefore = true;
+                     current_start_of_diapason = x[i];
+                  //   Console.WriteLine("current_start_of_diapason: " + current_start_of_diapason);
+                 }
+            }           
+        }
+        
+        if (current_start_of_diapason == x[x.Length - 1] || isBefore) {
+            count++;
+        }
+        
+        Console.WriteLine(count);
+    }
+    
+    
+}

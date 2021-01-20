@@ -1,0 +1,85 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+class Solution
+{
+    /* Head ends here */
+    static void Quicksort(int[] elements, int left, int right)
+    {
+        int i = left, j = right;
+        int pivot = elements[(left + right) / 2];
+
+        while (i <= j)
+        {
+            while (elements[i] < pivot)
+            {
+                i++;
+            }
+
+            while (elements[j] > pivot)
+            {
+                j--;
+            }
+
+            if (i <= j)
+            {
+                // Swap
+                int tmp = elements[i];
+                elements[i] = elements[j];
+                elements[j] = tmp;
+
+                i++;
+                j--;
+            }
+        }
+
+        // Recursive calls
+        if (left < j)
+        {
+            Quicksort(elements, left, j);
+        }
+
+        if (i < right)
+        {
+            Quicksort(elements, i, right);
+        }
+    }
+
+    static int pairs(int[] a, int k)
+    {
+        Quicksort(a, 0, a.Length - 1);
+        int count = 0;
+        for (int i = 0; i < a.Length - 1; i++)
+        {
+            for (int j = i + 1; j < a.Length; j++)
+            {
+                if ((a[j] - a[i]) < k) continue;
+                if ((a[j] - a[i]) == k) { count++; break; }
+                if ((a[j] - a[i]) > k) break;
+            }
+        }
+        return count;
+    }
+/* Tail starts here */
+static void Main(String[] args) {
+        int res;
+        
+        String line = Console.ReadLine();
+        String[] line_split = line.Split(' ');
+        int _a_size = Convert.ToInt32(line_split[0]);
+        int _k = Convert.ToInt32(line_split[1]);
+        int[] _a = new int [_a_size];
+        int _a_item;
+        String move = Console.ReadLine();
+        String[] move_split = move.Split(' ');
+        for(int _a_i = 0; _a_i < move_split.Length; _a_i++) {
+            _a_item = Convert.ToInt32(move_split[_a_i]);
+            _a[_a_i] = _a_item;
+        }
+        
+        res = pairs(_a,_k);
+        Console.WriteLine(res);
+        
+    }
+}
