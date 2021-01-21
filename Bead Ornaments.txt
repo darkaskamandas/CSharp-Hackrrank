@@ -1,0 +1,299 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Diagnostics;
+
+public class Solution
+{
+    static void Main(string[] args)
+    {
+        int T = ReadNextInt();
+        for (int t = 0; t < T; t++)
+        {
+            N = ReadNextInt();
+            int[] BB = new int[N];
+            for (int i = 0; i < N; i++)
+            {
+                BB[i] = ReadNextInt();
+            }
+
+            Console.WriteLine(
+                (N == 1) ? TreeCount(BB[0]) : Go(BB)
+            );
+        }
+    }
+
+    private static int TreeCount(int kk)
+    {
+        return kk <= 2 ? 1 : new Count(kk).Pow(kk - 2).value;
+    }
+
+    private static int N;
+
+    private static Count Go(int[] BB)
+    {
+        var cache = new Dictionary<Subset, CountCount>();
+        for (int i = 0; i < N; i++)
+        {
+            int m = 1 << i;
+            cache.Add(new Subset(m), new CountCount(BB[i], TreeCount(BB[i])));
+        }
+        return Go(BB, new Subset((1 << N) - 1), cache).count;
+    }
+
+    private static CountCount Go(int[] BB, Subset set, Dictionary<Subset, CountCount> cache)
+    {
+        CountCount result;
+        if (cache.TryGetValue(set, out result))
+        {
+            return result;
+        }
+
+        int totalBeads = 0;
+        int k = 0;
+        int m = set.mask;
+        int size = 0;
+        while (m != 0)
+        {
+            if ((m & 1) != 0)
+            {
+                totalBeads += BB[k];
+                size++;
+            }
+            k++;
+            m >>= 1;
+        }
+
+        Count totalCount = 0;
+
+        foreach (var ss in set.IterateSubsets())
+        {
+            var a = Go(BB, ss.a, cache);
+            var b = Go(BB, ss.b, cache);
+
+            totalCount += a.count * b.count * a.beads * b.beads;
+        }
+
+        result = new CountCount(totalBeads, totalCount / (size - 1));
+        cache.Add(set, result);
+        return result;
+    }
+
+    private struct CountCount
+    {
+        public readonly int beads;
+        public readonly Count count;
+
+        public CountCount(int b, Count c)
+        {
+            this.beads = b;
+            this.count = c;
+        }
+
+        public override string ToString()
+        {
+            return this.beads.ToString() + ":" + this.count.value.ToString();
+        }
+    }
+
+    private struct Subset : IEquatable<Subset>
+    {
+        public readonly int mask;
+
+        public Subset(int m)
+        {
+            this.mask = m;
+        }
+
+        public struct SubsetPair
+        {
+            public readonly Subset a;
+            public readonly Subset b;
+
+            public SubsetPair(int a, int b)
+            {
+                this.a = new Subset(a);
+                this.b = new Subset(b);
+            }
+
+            public override string ToString()
+            {
+                return this.a.ToString() + "/" + this.b.ToString();
+            }
+        }
+
+        public IEnumerable<SubsetPair> IterateSubsets()
+        {
+            int m = this.mask;
+            if (m != 0)
+            {
+                int bit = 0;
+                while (m != 0)
+                {
+                    bit++;
+                    m >>= 1;
+                }
+                bit--;
+                Debug.Assert(bit > 0);
+
+                m = this.mask;
+                int antimask = ~m;
+                int max = (1 << bit);
+
+                for (int k = 1; k < max; k++)
+                {
+                    Debug.Assert((k & ~((1 << N) - 1)) == 0);
+                    if ((k & antimask) == 0)
+                    {
+                        yield return new SubsetPair(k, m ^ k);
+                    }
+                }
+            }
+        }
+
+        public override string ToString()
+        {
+            int m = this.mask;
+            if (m == 0)
+            {
+                return "()";
+            }
+
+            StringBuilder builder = new StringBuilder();
+
+            int k = 0;
+            while (m != 0)
+            {
+                if ((m & 1) != 0)
+                {
+                    builder.Append(builder.Length > 0 ? "," : "(");
+                    builder.Append(k);
+                }
+                k++;
+                m >>= 1;
+            }
+            builder.Append(")");
+
+            return builder.ToString();
+        }
+
+        public override int GetHashCode()
+        {
+            return this.mask.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            throw new Exception();
+        }
+
+        public bool Equals(Subset other)
+        {
+            return this.mask == other.mask;
+        }
+    }
+
+    private struct Count
+    {
+        private const int MOD = 1000000007;
+
+        public readonly int value;
+
+        public Count(long v)
+        {
+            v %= MOD;
+            if (v < 0) v = MOD + v;
+            this.value = (int)v;
+        }
+
+        public override string ToString()
+        {
+            return this.value.ToString();
+        }
+
+        public static implicit operator Count(long l)
+        {
+            return new Count(l);
+        }
+
+        public static Count operator +(Count a, Count b)
+        {
+            return new Count((long)a.value + (long)b.value);
+        }
+
+        public static Count operator *(Count a, Count b)
+        {
+            return new Count((long)a.value * (long)b.value);
+        }
+
+        public Count Pow(int n)
+        {
+            if (n == 0) return 1;
+            if (n == 1) return this;
+            if (n == 2) return this * this;
+
+            var result = this.Pow(n / 2);
+            result *= result;
+            if ((n % 2) != 0) result *= this;
+
+            return result;
+        }
+
+        public static Count operator -(Count a, Count b)
+        {
+            return new Count((long)a.value - (long)b.value);
+        }
+
+        public static Count operator /(Count a, Count b)
+        {
+            if (a.value == 0) return 0;
+
+            if (a.value == b.value) return 1;
+
+            int x = b.value;
+            int y = a.value;
+
+            int xx = MOD;
+            int yy = MOD;
+
+            while (true)
+            {
+                EnsureFirstPairIsSmaller(ref x, ref y, ref xx, ref yy);
+
+                if (x == 1) return y;
+
+                int xxx = xx / x;
+                xx = xx % x;
+                yy = (yy - new Count(y) * xxx).value;
+            }
+        }
+
+        private static void EnsureFirstPairIsSmaller(ref int a, ref int b, ref int x, ref int y)
+        {
+            if (a > x)
+            {
+                int t = a; a = x; x = t;
+                t = b; b = y; y = t;
+            }
+        }
+    }
+
+    private static int ReadNextInt()
+    {
+        char c = (char)Console.Read();
+        while (!char.IsDigit(c))
+        {
+            c = (char)Console.Read();
+        }
+
+        int value = 0;
+        do
+        {
+            value *= 10;
+            value += c - '0';
+        }
+        while (char.IsDigit(c = (char)Console.Read()));
+
+        return value;
+    }
+}
