@@ -1,0 +1,417 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+
+namespace Submission05._037_Algo_Graph_JeaniesRoute
+{
+    public class FrugalGraph
+    {
+        public struct Edge
+        {
+            public Edge(int nodeA_in, int nodeB_in, long cost_in)
+                : this()
+            {
+                NodeA = nodeA_in;
+                NodeB = nodeB_in;
+                Cost = cost_in;
+            }
+            public int NodeA { get; private set; }
+            public int NodeB { get; private set; }
+            public long Cost { get; private set; }
+
+            public override int GetHashCode()
+            {
+                return NodeA ^ NodeB ^ Cost.GetHashCode();
+            }
+
+            public override bool Equals(object object_in)
+            {
+                if (object_in is Edge)
+                {
+                    Edge e = (Edge)object_in;
+                    return (NodeA == e.NodeA) && (NodeB == e.NodeB) && (Cost == e.Cost);
+                }
+                return false;
+            }
+        }
+
+        public FrugalGraph(int nodeCount_in)
+        {
+            myNodesAndEdges_ = new List<List<Edge>>();
+            for (int i = 0; i <= nodeCount_in; ++i)
+            {
+                myNodesAndEdges_.Add(new List<Edge>());
+            }
+        }
+
+
+        protected List<List<Edge>> myNodesAndEdges_;
+
+        public void AddEdges(int nodeA_in, int nodeB_in, long cost_in)
+        {
+            Edge aNewEdge = new Edge(nodeA_in, nodeB_in, cost_in);
+            myNodesAndEdges_[nodeA_in].Add(aNewEdge);
+            myNodesAndEdges_[nodeB_in].Add(aNewEdge);
+        }
+
+        public List<Edge> GetEdges(int node_in)
+        {
+            return myNodesAndEdges_[node_in];
+        }
+
+        public int GetRank(int node_in)
+        {
+            return GetEdges(node_in).Count;
+        }
+
+        public void Remove(int node_in)
+        {
+            List<Edge> anOtherEdges = GetEdges(node_in);
+            foreach (Edge anEdge in anOtherEdges)
+            {
+                int anOtherEdge = (node_in == anEdge.NodeA) ? anEdge.NodeB : anEdge.NodeA;
+                myNodesAndEdges_[anOtherEdge].Remove(anEdge);
+            }
+            myNodesAndEdges_[node_in].Clear();
+        }
+
+
+        public void Shrink(bool[] travelCityFlagArray_in)
+        {
+            int[] aNodeRankArray = new int[myNodesAndEdges_.Count];
+            for (int i = 1; i < myNodesAndEdges_.Count; ++i)
+            {
+                aNodeRankArray[i] = myNodesAndEdges_[i].Count;
+            }
+            for (int i = 1; i < myNodesAndEdges_.Count; ++i)
+            {
+                if (aNodeRankArray[i] == 1 && !travelCityFlagArray_in[i])
+                {
+                    RemoveUnIntresting(i, travelCityFlagArray_in, aNodeRankArray);
+                }
+            }
+            for (int i = 1; i < myNodesAndEdges_.Count; ++i)
+            {
+                if (aNodeRankArray[i] == 2)
+                {
+                    UnifyNode(i, aNodeRankArray);
+                }
+            }
+        }
+
+        private void UnifyNode(int node_in, int[] nodeRankArray_in)
+        {
+            List<Edge> anEdges2Unify = GetEdges(node_in);
+            nodeRankArray_in[node_in] = 0;
+            int aNodeA = (node_in == anEdges2Unify[0].NodeA) ? anEdges2Unify[0].NodeB : anEdges2Unify[0].NodeA;
+            int aNodeB = (node_in == anEdges2Unify[1].NodeA) ? anEdges2Unify[1].NodeB : anEdges2Unify[1].NodeA;
+            Edge aNewEdge = new Edge(aNodeA, aNodeB, anEdges2Unify[0].Cost + anEdges2Unify[1].Cost);
+            myNodesAndEdges_[aNodeA].Remove(anEdges2Unify[0]);
+            myNodesAndEdges_[aNodeB].Remove(anEdges2Unify[1]);
+            myNodesAndEdges_[node_in].Clear();
+            myNodesAndEdges_[aNodeA].Add(aNewEdge);
+            myNodesAndEdges_[aNodeB].Add(aNewEdge);
+        }
+
+        private void RemoveUnIntresting(int node_in, bool[] travelCityFlagArray_in, int[] nodeRankArray_in)
+        {
+            int aNode2Remove = node_in;
+            do
+            {
+                List<Edge> anEdge2RemoveList = GetEdges(aNode2Remove);
+                Edge anEdge2Remove = anEdge2RemoveList[0];
+                myNodesAndEdges_[aNode2Remove].Clear();
+                --nodeRankArray_in[anEdge2Remove.NodeA];
+                --nodeRankArray_in[anEdge2Remove.NodeB];
+                aNode2Remove = (aNode2Remove == anEdge2Remove.NodeA) ? anEdge2Remove.NodeB : anEdge2Remove.NodeA;
+                myNodesAndEdges_[aNode2Remove].Remove(anEdge2Remove);
+            }
+            while (nodeRankArray_in[aNode2Remove] == 1 && !travelCityFlagArray_in[aNode2Remove]);
+        }
+
+        public void Dump()
+        {
+            HashSet<Edge> anEdgeHash = new HashSet<Edge>();
+            for (int i = 0; i < myNodesAndEdges_.Count; ++i)
+            {
+                foreach (Edge anEdge in myNodesAndEdges_[i])
+                {
+                    if (!anEdgeHash.Contains(anEdge)) anEdgeHash.Add(anEdge);
+                }
+            }
+            foreach (Edge anEdge in anEdgeHash)
+            {
+                Console.WriteLine("{0} -- {1}", anEdge.NodeA, anEdge.NodeB);
+            }
+        }
+
+        public void DumpEdgeCount()
+        {
+            Console.WriteLine("Edge Count: {0}", (myNodesAndEdges_.Sum(x => x.Count) >> 1));
+        }
+
+        public long CountEdgeCosts()
+        {
+            return myNodesAndEdges_.Sum(x => x.Sum(y => y.Cost));
+        }
+
+        public bool ShrinkTheSatelites()
+        {
+            bool aDidShrinkageHappened = false;
+            int[] aNodeRankArray = new int[myNodesAndEdges_.Count];
+            for (int i = 1; i < myNodesAndEdges_.Count; ++i)
+            {
+                aNodeRankArray[i] = myNodesAndEdges_[i].Count;
+            }
+            List<int> edges = aNodeRankArray.Where(x => x == 1).ToList();
+            for (int i = 1; i < myNodesAndEdges_.Count; ++i)
+            {
+                if (aNodeRankArray[i] > 2)
+                {
+                    if (IsASatelite(i, myNodesAndEdges_[i], aNodeRankArray))
+                    {
+                        Edge aHolder;
+                        long aMaxValue;
+                        GetHolderAndMaxSateliteRemoveSat(i, myNodesAndEdges_[i], aNodeRankArray, out aHolder, out aMaxValue);
+                        int aHolderNode = GetTheOtherNode(i, aHolder);
+                        Edge aNewEdge = new Edge(aHolderNode, i, aHolder.Cost + aMaxValue);
+                        myNodesAndEdges_[aHolderNode].Remove(aHolder);
+                        myNodesAndEdges_[i].Clear();
+                        aNodeRankArray[i] = 0;
+                        myNodesAndEdges_[aHolderNode].Add(aNewEdge);
+                        myNodesAndEdges_[i].Add(aNewEdge);
+                        aDidShrinkageHappened = true;
+                    }
+                }
+            }
+            return aDidShrinkageHappened;
+        }
+
+        private bool IsASatelite(int node_in, List<Edge> nodeList_in, int[] nodeRankArray_in)
+        {
+            bool aHolderEncountered = false;
+            for (int i = 0; i < nodeList_in.Count; ++i)
+            {
+                int anOtherNode = GetTheOtherNode(node_in, nodeList_in[i]);
+                if (nodeRankArray_in[anOtherNode] > 1)
+                {
+                    if (aHolderEncountered == true)
+                        return false;
+                    aHolderEncountered = true;
+                }
+            }
+            return aHolderEncountered;
+        }
+
+        private void GetHolderAndMaxSateliteRemoveSat(int node_in, List<Edge> nodeList_in, int[] nodeRankArray_in, out Edge holder_out, out long maxSatelite_out)
+        {
+            Edge aHolder = default(Edge);
+            long aMaxSatelite = -1;
+            for (int i = 0; i < nodeList_in.Count; ++i)
+            {
+                int anOtherNode = GetTheOtherNode(node_in, nodeList_in[i]);
+                if (nodeRankArray_in[anOtherNode] > 1)
+                {
+                    aHolder = nodeList_in[i];
+                }
+                else
+                {
+                    if (aMaxSatelite < nodeList_in[i].Cost)
+                        aMaxSatelite = nodeList_in[i].Cost;
+                    myNodesAndEdges_[anOtherNode].Clear();
+                    nodeRankArray_in[anOtherNode] = 0;
+                }
+            }
+            holder_out = aHolder;
+            maxSatelite_out = aMaxSatelite;
+        }
+
+        private static int GetTheOtherNode(int node_in, Edge edge_in)
+        {
+            return (node_in == edge_in.NodeA) ? edge_in.NodeB : edge_in.NodeA;
+        }
+
+        public long GetLeftOver()
+        {
+            if (myNodesAndEdges_.Where(x => x.Count > 1).Count() == 0)
+            {
+                List<Edge> aLeftOverList = myNodesAndEdges_.Where(x => x.Count == 1).First();
+                return aLeftOverList[0].Cost;
+            }
+            else
+            {
+                List<Edge> aLeftOverList = myNodesAndEdges_.Where(x => x.Count > 1).First();
+                if (aLeftOverList.Count == 1) return aLeftOverList[0].Cost;
+                aLeftOverList = aLeftOverList.OrderBy(x => x.Cost).Reverse().ToList();
+                return aLeftOverList[0].Cost + aLeftOverList[1].Cost;
+            }
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SubmissionRun();
+        }
+
+        static void SubmissionRun()
+        {
+            HereComesTheAlgorithm(new ConsoleReaderHelper(), Console.Out);
+        }
+
+        private static void HereComesTheAlgorithm(TextReaderHelper textReaderHelper_in, TextWriter textWriter_in)
+        {
+            int[] aHeader = textReaderHelper_in.GetValueArraySpaceSeparated<int>();
+            int aNumberOfNodes = aHeader[0];
+            int aNumberOfEdges = aNumberOfNodes - 1;
+            int aNumberOfTown2Visit = aHeader[1];
+
+            int[] aCities2Deliver = textReaderHelper_in.GetPositiveNumberArraySpaceSeparated(aNumberOfTown2Visit);
+
+            FrugalGraph aFrugalGraph = new FrugalGraph(aNumberOfNodes);
+            for (int i = 0; i < aNumberOfEdges; ++i)
+            {
+                int[] anEdgeArray = textReaderHelper_in.GetValueArraySpaceSeparated<int>();
+                aFrugalGraph.AddEdges(anEdgeArray[0], anEdgeArray[1], anEdgeArray[2]);
+            }
+
+            bool[] aTravelCityFlagArray = new bool[aNumberOfNodes + 1];
+            for (int i = 0; i < aCities2Deliver.Length; ++i)
+            {
+                aTravelCityFlagArray[aCities2Deliver[i]] = true;
+            }
+
+            aFrugalGraph.Shrink(aTravelCityFlagArray);
+
+            long anAllEdgeCost = aFrugalGraph.CountEdgeCosts();
+
+            while (aFrugalGraph.ShrinkTheSatelites()) ;
+
+            long aLongestPath = aFrugalGraph.GetLeftOver();
+
+            textWriter_in.WriteLine(anAllEdgeCost - aLongestPath);
+        }
+    }
+}
+
+namespace Submission05._037_Algo_Graph_JeaniesRoute
+{    
+    public class FileReaderHelper : TextReaderHelper
+    {
+        public FileReaderHelper(string fileName_in)
+            : base(new StreamReader(fileName_in), true)
+        {
+        }
+    }
+
+    public class ConsoleReaderHelper : TextReaderHelper
+    {
+        public ConsoleReaderHelper()
+            : base(Console.In, false)
+        {
+        }
+    }
+
+    public class TextReaderHelper : IDisposable
+    {
+        private TextReader myTextReader_;
+        private readonly bool myDisposeNeededFlag_;
+
+        public TextReaderHelper(TextReader textReader_in, bool disposeNeededFlag_in)
+        {
+            myTextReader_ = textReader_in;
+            myDisposeNeededFlag_ = disposeNeededFlag_in;
+        }
+
+        #region Basic Helper Functions ---------------------------------------------------
+        public T GetValue<T>()
+        {
+            string aLine = myTextReader_.ReadLine();
+            return (T)Convert.ChangeType(aLine, typeof(T));
+        }
+
+        public int[] GetPositiveNumberArraySpaceSeparated(int itemCount_in)
+        {
+            return GetPositiveNumberArray(itemCount_in, ' ');
+        }
+
+        public int[] GetPositiveNumberArray(int itemCount_in, char separator_in)
+        {
+            string aLine = myTextReader_.ReadLine();
+
+            List<int> aReturnList = new List<int>(itemCount_in + 1);
+            int y = 0;
+            for (int i = 0; i < aLine.Length; i++)
+            {
+                char currentValue = aLine[i];
+                if (currentValue == separator_in)
+                {
+                    aReturnList.Add(y);
+                    y = 0;
+                    if (itemCount_in <= aReturnList.Count)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    y = y * 10 + (currentValue - '0');
+                }
+            }
+            if (y > 0)
+            {
+                aReturnList.Add(y);
+                //y = 0;                                           // No need for these, but keep it here as reminder... :-)
+            }
+            return aReturnList.ToArray();
+        }
+
+        public T[] GetValueArraySpaceSeparated<T>()
+        {
+            return GetValueArray<T>(' ');
+        }
+
+        public T[] GetValueArray<T>(params char[] separator_in)
+        {
+            string aLine = myTextReader_.ReadLine();
+            string[] anItemStringArray = aLine.Split(separator_in);
+            return anItemStringArray.Select(x => (T)Convert.ChangeType(x, typeof(T))).ToArray();
+        }
+        #endregion Basic Helper Functions ------------------------------------------------
+
+        #region Dispose Section ---------------------------------------------------------------------
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing_in)
+        {
+            if (disposing_in)
+            {
+                // free managed resources
+                if (myDisposeNeededFlag_)
+                {
+                    if (myTextReader_ != null)
+                    {
+                        myTextReader_.Close();
+                        myTextReader_.Dispose();
+                        myTextReader_ = null;
+                    }
+                }
+            }
+        }
+
+        ~TextReaderHelper()
+        {
+            // Debug.WriteLine("~TextReaderHelper! Not proper use! Finalizer called from Garbage Collection thread!");
+        }
+        #endregion Dispose Section ---------------------------------------------------------------------
+    }    
+}
