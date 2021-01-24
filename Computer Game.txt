@@ -1,0 +1,239 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    static void Main(String[] args) {
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        ComputerGame.Start();
+    }
+}
+    public static class ComputerGame
+    {
+        public const int MAX = 1000000000;
+        public static void Start()
+        {
+            byte[] inputBuffer = new byte[2048000];
+            Stream inputStream = Console.OpenStandardInput(inputBuffer.Length);
+            Console.SetIn(new StreamReader(inputStream, Console.InputEncoding, false, inputBuffer.Length));
+            int n = int.Parse(Console.ReadLine());
+            string[] first = Console.ReadLine().Split(' ');
+            int[] firstArray = Array.ConvertAll(first, x => int.Parse(x));
+            string[] second = Console.ReadLine().Split(' ');
+            
+            int[] secondArray = Array.ConvertAll(second, x => int.Parse(x));
+            Console.WriteLine(MaxRemovals(firstArray.ToList(), secondArray.ToList()));
+        }
+
+        static List<bool> Eratosthenes(int maxValue)
+        {
+            List<bool> isPrime = new List<bool>(maxValue);
+            for (int i = 0; i < maxValue; i++)
+                isPrime.Add(true);
+
+            isPrime[0] = isPrime[1] = false;
+            double L = Math.Sqrt(maxValue);
+
+            for (int i = 2; i <= L; i++)
+            {
+                if (isPrime[i])
+                {
+                    for (int j = i * i; j < maxValue; j += i)
+                    {
+                        isPrime[j] = false;
+                    }
+                }
+            }
+
+            return isPrime;
+        }
+
+        static List<int> MiniEratosthenes(List<bool> isPrime)
+        {
+            List<int> primes = new List<int>();
+            int maxValue = isPrime.Count();
+
+            for (int i = 2; i < maxValue; i++)
+            {
+                if (isPrime[i])
+                    primes.Add(i);
+            }
+
+            return primes;
+        }
+
+
+        static bool BothSideMatched(int u,
+                   int[][] firstArrayPrimeIds,
+                   int[] primeIdLengths,
+                   int[][] secondMatchedArray,
+                   int[] secondArrayMatchLengths,
+                   int[] leftVisited,
+                   int[] rightVisited,
+                   int[] leftMatch,
+                   int[] rightMatch,
+                   int visitedI)
+        {
+            if (leftVisited[u] == visitedI)
+                return false;
+            leftVisited[u] = visitedI;
+            int[] factors = firstArrayPrimeIds[u];
+
+            for (int i = 0; i < primeIdLengths[u]; i++)
+            {
+                if (rightVisited[factors[i]] == visitedI)
+                    continue;
+                for (int j = 0; j < secondArrayMatchLengths[factors[i]]; j++)
+                {
+                    int v = secondMatchedArray[factors[i]][j];
+                    if (rightMatch[v] < 0)
+                    {
+                        leftMatch[u] = v;
+                        rightMatch[v] = u;
+                        return true;
+                    }
+                }
+            }
+
+            for (int i = 0; i < primeIdLengths[u]; i++)
+            {
+                if (rightVisited[factors[i]] == visitedI)
+                    continue;
+                rightVisited[factors[i]] = visitedI;
+                for (int j = 0; j < secondArrayMatchLengths[factors[i]]; j++)
+                {
+                    int v = secondMatchedArray[factors[i]][j];
+                    if (leftMatch[u] != v &&
+                        BothSideMatched(rightMatch[v],
+                              firstArrayPrimeIds,
+                              primeIdLengths,
+                              secondMatchedArray,
+                              secondArrayMatchLengths,
+                              leftVisited,
+                              rightVisited,
+                              leftMatch,
+                              rightMatch,
+                              visitedI))
+                    {
+                        leftMatch[u] = v;
+                        rightMatch[v] = u;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        static int PrimeIdValue(int prime, Dictionary<int, int> primeIds)
+        {
+            int v = int.MaxValue;
+            
+            bool exist = primeIds.TryGetValue(prime, out v);
+            if (!exist)
+                primeIds[prime] = primeIds.Count();
+            return primeIds[prime];
+        }
+
+        static int MaxRemovals(List<int> first, List<int> second)
+        {
+            List<bool> isPrime = Eratosthenes(Convert.ToInt32(Math.Sqrt(MAX)));
+            List<int> primes = MiniEratosthenes(isPrime);
+
+            Dictionary<int, int> primeIds = new Dictionary<int, int>();
+            int[] primeFactors = new int[primes.Count()];
+            int[][] firstArrayPrimeIds = new int[first.Count()][];
+            int[] firstArrayPrimeIdsLength = new int[first.Count()];
+
+            for (int i = 0; i < first.Count(); i++)
+            {
+                int x = first[i];
+                int p = 0;
+                for (int j = 0; j < primes.Count() && primes[j] * primes[j] <= x; j++)
+                {
+                    if (x % primes[j] == 0)
+                        primeFactors[p++] = primes[j];
+                    while (x % primes[j] == 0)
+                        x /= primes[j];
+                }
+                if (x > 1)
+                    primeFactors[p++] = x;
+
+                firstArrayPrimeIds[i] = new int[p];
+                firstArrayPrimeIdsLength[i] = p;
+                for (int j = 0; j < p; j++)
+                {
+                    firstArrayPrimeIds[i][p - j - 1] = PrimeIdValue(primeFactors[j], primeIds);
+                }
+            }
+
+            List<List<int>> secondMatchList = new List<List<int>>(primeIds.Count() + 1);
+            for (int i = 0; i < primeIds.Count() + 1; i++)
+                secondMatchList.Add(new List<int>());
+
+            for (int i = 0; i < second.Count(); i++)
+            {
+                int secondArrayValue = second[i];
+                for (int j = 0; j < primes.Count() && primes[j] * primes[j] <= secondArrayValue; j++)
+                {
+                    int v = int.MaxValue;
+                    var exist = primeIds.TryGetValue(primes[j], out v);
+                    if (secondArrayValue % primes[j] == 0 && exist)
+                        secondMatchList[primeIds[primes[j]]].Add(i);
+                    while (secondArrayValue % primes[j] == 0)
+                        secondArrayValue /= primes[j];
+                }
+                int v2 = int.MaxValue;
+                var exist2 = primeIds.TryGetValue(secondArrayValue, out v2);
+
+                if (secondArrayValue > 1 && exist2)
+                    secondMatchList[primeIds[secondArrayValue]].Add(i);
+            }
+
+            int[] leftMatch = new int[first.Count()];
+            int[] rightMatch = new int[second.Count()];
+            int[] leftVisited = new int[first.Count()];
+            int[] rightVisited = new int[primeIds.Count()];
+
+            SetArrayDefaultValue(leftMatch, -1, first.Count());
+            SetArrayDefaultValue(rightMatch, -1, second.Count());
+            SetArrayDefaultValue(leftVisited, - 1, first.Count());
+            SetArrayDefaultValue(rightVisited, -1, primeIds.Count());
+
+            int[][] secondMatchArray = new int[secondMatchList.Count()][];
+            int[] secondMatchLengths = new int[secondMatchList.Count()];
+            for (int i = 0; i < secondMatchList.Count(); i++)
+            {
+                secondMatchArray[i] = new int[secondMatchList[i].Count()];
+                secondMatchLengths[i] = secondMatchList[i].Count();
+                for (int j = 0; j < secondMatchList[i].Count(); j++)
+                    secondMatchArray[i][j] = secondMatchList[i][j];
+            }
+
+            int count = 0;
+            for (int i = 0; i < first.Count(); i++)
+            {
+                if (BothSideMatched(i,
+                          firstArrayPrimeIds,
+                          firstArrayPrimeIdsLength,
+                          secondMatchArray,
+                          secondMatchLengths,
+                          leftVisited,
+                          rightVisited,
+                          leftMatch,
+                          rightMatch,
+                          i))
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static void SetArrayDefaultValue(int[] array, int value, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                array[i] = value;
+            }
+        }
+    }

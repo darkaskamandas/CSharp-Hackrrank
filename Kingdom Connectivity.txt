@@ -1,0 +1,115 @@
+using System;
+using System.Collections.Generic;
+
+class Solution
+{
+	static void Main(string[] args)
+	{
+		var kingdomConnectivitySolver = new KingdomConnectivitySolver();
+		kingdomConnectivitySolver.GetInput();
+                System.Console.WriteLine( kingdomConnectivitySolver.ComputeTotalPaths() );
+	}
+	
+	class KingdomConnectivitySolver
+	{
+		private City A;
+		private City B;
+
+		public string ComputeTotalPaths()
+		{
+			if( A == null || B == null )
+				return "0";
+
+			var currentPath = new Stack<City>();
+			currentPath.Push(A);
+
+			while( A.ConnectedCities.Count > 0 )
+			{
+				currentPath.Push(A.ConnectedCities.Pop());
+				currentPath.Peek().Visited = true;
+				do
+				{
+					if( currentPath.Peek().PathsToB > 0 && currentPath.Peek().BelongsToLoop )
+						break;
+					if( currentPath.Peek() == B )
+					{
+						currentPath.Peek().Visited = false;
+						currentPath.Pop();
+						currentPath.Peek().PathsToB = ( currentPath.Peek().PathsToB + 1 ) % (long)1E9;
+					}
+					else if( currentPath.Peek().ConnectedCities.Count == 0 )
+					{
+						var completedNode = currentPath.Pop();
+						completedNode.Visited = false;
+						currentPath.Peek().PathsToB = ( currentPath.Peek().PathsToB + completedNode.PathsToB ) % (long)1E9;
+					}
+					else
+					{
+						currentPath.Push(currentPath.Peek().ConnectedCities.Pop());
+						if( currentPath.Peek().Visited )
+						{
+							if( currentPath.Peek().PathsToB > 0 )
+								break;
+							currentPath.Peek().BelongsToLoop = true;
+							currentPath.Pop();
+						}
+						else
+						{
+							currentPath.Peek().Visited = true;
+						}
+					}					
+				} while( currentPath.Peek() != A );
+
+				if( currentPath.Peek() != A || currentPath.Peek().Visited )
+					return "INFINITE PATHS";
+			}
+			return A.PathsToB.ToString();
+		}
+            
+            
+		public void GetInput()
+		{			
+			string input = String.Empty + Console.ReadLine();
+			string[] splitInput = input.Split( ' ' );
+
+			int N = int.Parse( splitInput[0] );
+			int M = int.Parse( splitInput[1] );
+
+			var cities = new City[N];
+			
+			while(M > 0)
+			{
+				input = String.Empty + Console.ReadLine();
+				splitInput = input.Split( ' ' );
+				
+				int n1 = int.Parse( splitInput[0] );
+				int n2 = int.Parse( splitInput[1] );
+				
+				if( cities[n1 - 1] == null ) cities[n1 - 1] = new City();
+				if( cities[n2 - 1] == null ) cities[n2 - 1] = new City();
+
+				cities[n1 - 1].ConnectedCities.Push( cities[n2 - 1] );
+				M--;
+			}
+
+			A = cities[0];
+			B = cities[N - 1];
+		}
+
+            
+		private class City
+		{
+			public readonly Stack<City> ConnectedCities; 
+			public bool Visited;
+			public bool BelongsToLoop;
+			public long PathsToB;
+
+			public City()
+			{
+				ConnectedCities = new Stack<City>();
+				Visited = false;
+				PathsToB = 0;
+			}
+		}
+	}
+}
