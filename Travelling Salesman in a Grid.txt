@@ -1,0 +1,938 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution
+{
+    private static int _rowN;
+    private static int _columnN;
+    private static bool[,] _taken;
+    private static int[,] _possibleEdges;
+    private static int _targetNumber;
+    private static List<List<int>> _costRow;
+    private static List<List<int>> _costColumn;
+    private static bool _hasSum;
+    private static long _currentMinSum;
+    private static List<int> _leftList;
+    private static bool[,] _coloredBlock;
+    private static int _targetTaken;
+
+    private static void Initialize()
+    {
+        string s = Console.ReadLine();
+        int[] dimensions = s.Split(' ').Select(n => Convert.ToInt32(n)).ToArray();
+
+        _costRow = new List<List<int>>();
+        _costColumn = new List<List<int>>();
+
+        for (int i = 0; i < dimensions[0]; i++)
+        {
+            string row = Console.ReadLine();
+            List<int> temp = row.Split(' ').Select(n => Convert.ToInt32(n)).ToList();
+            _costRow.Add(temp);
+        }
+
+        for (int i = 0; i < dimensions[0] - 1; i++)
+        {
+            string column = Console.ReadLine();
+            List<int> temp = column.Split(' ').Select(n => Convert.ToInt32(n)).ToList();
+            _costColumn.Add(temp);
+        }
+
+        _rowN = dimensions[0];
+        _columnN = dimensions[1];
+
+        _taken = new bool[_rowN, _columnN];
+        _possibleEdges = new int[_rowN, _columnN];
+        _targetNumber = _rowN * _columnN;
+
+        _targetTaken = (_targetNumber - 2) / 2;
+
+        _coloredBlock = new bool[_rowN - 1, _columnN - 1];
+
+        _coloredBlock[0, 0] = true;
+
+        for (int i = 0; i < _rowN; i++)
+        {
+            for (int j = 0; j < _columnN; j++)
+            {
+                _possibleEdges[i, j] = 4;
+
+                if (i == 0 || i == _rowN - 1)
+                {
+                    _possibleEdges[i, j]--;
+                }
+
+                if (j == 0 || j == _columnN - 1)
+                {
+                    _possibleEdges[i, j]--;
+                }
+            }
+        }
+
+
+        _leftList = _costColumn
+            .SelectMany(c => c.Select(n => n))
+            .Concat(_costRow.SelectMany(c => c.Select(n => n)))
+            .ToList();
+
+        _hasSum = false;
+        _currentMinSum = 0;
+    }
+
+    static void Main(String[] args)
+    {
+        Initialize();
+
+        if (_targetNumber % 2 == 1)
+        {
+            Console.WriteLine(0);
+        }
+        else if (_targetTaken == 0)
+        {
+            Console.WriteLine(_leftList.Sum());
+        }
+        else
+        {
+            Recurse(0, 0, 0, 0, 0, 0);
+            Console.WriteLine(_currentMinSum);
+        }
+    }
+
+    private static void Recurse(int currentX, int currentY, long currentSum, int depth, int blockCount, int lastDirection)
+    {
+        if (blockCount > _targetTaken)
+            return;
+
+        bool hasTopLeft = currentX - 1 >= 0 && currentY - 1 >= 0;
+        bool hasTopRight = currentX - 1 >= 0 && currentY < _columnN - 1;
+        bool hasBottomLeft = currentX < _rowN - 1 && currentY - 1 >= 0;
+        bool hasBottomRight = currentX < _rowN - 1 && currentY < _columnN - 1;
+
+        bool hasTopLeftLeft = currentX - 1 >= 0 && currentY - 2 >= 0;
+        bool hasTopRightRight = currentX - 1 >= 0 && currentY + 1 < _columnN - 1;
+        bool hasBottomLeftLeft = currentX < _rowN - 1 && currentY - 2 >= 0;
+        bool hasBottomRightRight = currentX < _rowN - 1 && currentY + 1 < _columnN - 1;
+
+        bool hasTopTopLeft = currentX - 2 >= 0 && currentY - 1 >= 0;
+        bool hasTopTopRight = currentX - 2 >= 0 && currentY < _columnN - 1;
+        bool hasBottomBottomLeft = currentX + 1 < _rowN - 1 && currentY - 1 >= 0;
+        bool hasBottomBottomRight = currentX + 1 < _rowN - 1 && currentY < _columnN - 1;
+
+        int topX = currentX - 1;
+        int bottomX = currentX;
+        int leftY = currentY - 1;
+        int rightY = currentY;
+
+        int topTopX = currentX - 2;
+        int bottomBottomX = currentX + 1;
+        int leftLeftY = currentY - 2;
+        int rightRightY = currentY + 1;
+
+        _taken[currentX, currentY] = true;
+        if ((currentY == 0 && currentX != 0) || currentX == _rowN - 1 || currentY == _columnN - 1)
+        {
+            for (int tt = 0; tt < _columnN; tt++)
+            {
+                if (!_taken[0, tt])
+                {
+                    _taken[currentX, currentY] = false;
+                    return;
+                }
+            }
+            if (((currentY == 0 && currentX != 0) || currentX == _rowN - 1))
+            {
+                for (int tt = 0; tt < _rowN; tt++)
+                {
+                    if (!_taken[tt, _columnN - 1])
+                    {
+                        _taken[currentX, currentY] = false;
+                        return;
+                    }
+                }
+                if ((currentY == 0 && currentX != 0))
+                {
+                    for (int tt = 0; tt < _columnN; tt++)
+                    {
+                        if (!_taken[_rowN - 1, tt])
+                        {
+                            _taken[currentX, currentY] = false;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        _taken[currentX, currentY] = false;
+
+        if ((_hasSum && _currentMinSum < currentSum + _costColumn[0][0] + _leftList.Take(_targetNumber - depth - 1).Sum()))
+        {
+            return;
+        }
+
+        if (depth == _targetNumber - 1 || (currentX == 1 && currentY == 0))
+        {
+            if (depth == _targetNumber - 1 && (currentX == 1 && currentY == 0))
+            {
+                if (!_hasSum || _currentMinSum > currentSum + _costColumn[0][0])
+                {
+                    _currentMinSum = currentSum + _costColumn[0][0];
+                }
+                _hasSum = true;
+            }
+            return;
+        }
+
+        _taken[currentX, currentY] = true;
+
+        List<RecursionEntry> sideValues = new List<RecursionEntry>();
+        bool canUp = currentX - 1 >= 0 && !_taken[currentX - 1, currentY];
+        bool canRight = currentY + 1 < _columnN && !_taken[currentX, currentY + 1];
+        bool canDown = currentX + 1 < _rowN && !_taken[currentX + 1, currentY];
+        bool canLeft = currentY - 1 >= 0 && !_taken[currentX, currentY - 1];
+
+        int temp = _possibleEdges[currentX, currentY];
+        _possibleEdges[currentX, currentY] = -1;
+
+        if (canUp)
+        {
+            sideValues.Add(new RecursionEntry(currentX - 1, currentY, _costColumn[currentX - 1][currentY], 2));
+        }
+        if (canRight)
+        {
+            sideValues.Add(new RecursionEntry(currentX, currentY + 1, _costRow[currentX][currentY], 3));
+        }
+        if (canDown)
+        {
+            sideValues.Add(new RecursionEntry(currentX + 1, currentY, _costColumn[currentX][currentY], 0));
+        }
+        if (canLeft)
+        {
+            sideValues.Add(new RecursionEntry(currentX, currentY - 1, _costRow[currentX][currentY - 1], 1));
+        }
+
+        sideValues.ForEach(v => _leftList.Remove(v.EdgeCost));
+
+        foreach (RecursionEntry entry in sideValues)
+        {
+            _possibleEdges[entry.X, entry.Y]--;
+        }
+
+        foreach (RecursionEntry entry in sideValues)
+        {
+            int colorCount = blockCount;
+            if (lastDirection == 0)
+            {
+                if (entry._direction == 0)
+                {
+                    if (hasBottomLeft && hasBottomRight && _coloredBlock[bottomX, leftY] && _coloredBlock[bottomX, rightY])
+                        continue;
+
+                    if (hasTopLeft)
+                    {
+                        if (_coloredBlock[topX, leftY])
+                        {
+                            if (hasTopLeftLeft && hasBottomLeftLeft && _coloredBlock[topX, leftLeftY] && _coloredBlock[bottomX, leftLeftY])
+                            {
+
+                            }
+                            else if (_coloredBlock[bottomX, leftY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[bottomX, leftY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[bottomX, leftY] = false;
+                            }
+                        }
+                        else
+                        {
+                            if (hasBottomRight)
+                            {
+                                if (hasTopRightRight && hasBottomRightRight && _coloredBlock[topX, rightRightY] && _coloredBlock[bottomX, rightRightY])
+                                {
+
+                                }
+                                else if (_coloredBlock[bottomX, rightY])
+                                {
+                                    Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                        entry._direction);
+                                }
+                                else
+                                {
+                                    _coloredBlock[bottomX, rightY] = true;
+
+                                    Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                        entry._direction);
+
+                                    _coloredBlock[bottomX, rightY] = false;
+                                }
+                            }
+                        }
+                    }
+                    else if (hasTopRight)
+                    {
+                        if (hasBottomRight)
+                        {
+                            if (_coloredBlock[topX, rightY])
+                            {
+                                if (hasTopRightRight && hasBottomRightRight && _coloredBlock[topX, rightRightY] && _coloredBlock[bottomX, rightRightY])
+                                {
+
+                                }
+                                else if (_coloredBlock[bottomX, rightY])
+                                {
+                                    Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                        entry._direction);
+                                }
+                                else
+                                {
+                                    _coloredBlock[bottomX, rightY] = true;
+
+                                    Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                        entry._direction);
+
+                                    _coloredBlock[bottomX, rightY] = false;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (entry._direction == 1)
+                {
+                    if (hasTopLeft && hasBottomLeft && _coloredBlock[bottomX, leftY] && _coloredBlock[topX, leftY])
+                        continue;
+
+                    if (_coloredBlock[topX, leftY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasBottomLeft && hasBottomRight)
+                    {
+                        bool colorLeft = false;
+                        bool colorRight = false;
+
+                        if (!_coloredBlock[bottomX, leftY])
+                        {
+                            colorLeft = true;
+                            _coloredBlock[bottomX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, rightY])
+                        {
+                            colorRight = true;
+                            _coloredBlock[bottomX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorLeft)
+                        {
+                            _coloredBlock[bottomX, leftY] = false;
+                        }
+                        if (colorRight)
+                        {
+                            _coloredBlock[bottomX, rightY] = false;
+                        }
+                    }
+                }
+
+                if (entry._direction == 3)
+                {
+                    if (hasTopRight && hasBottomRight && _coloredBlock[bottomX, rightY] && _coloredBlock[topX, rightY])
+                        continue;
+
+                    if (hasBottomRight && currentX == 0 && currentY == 0)
+                    {
+                        _coloredBlock[bottomX, rightY] = true;
+                        colorCount++;
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        _coloredBlock[bottomX, rightY] = false;
+                    }
+                    else if (hasTopRight && _coloredBlock[topX, rightY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasBottomLeft && hasBottomRight)
+                    {
+                        bool colorLeft = false;
+                        bool colorRight = false;
+
+                        if (!_coloredBlock[bottomX, leftY])
+                        {
+                            colorLeft = true;
+                            _coloredBlock[bottomX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, rightY])
+                        {
+                            colorRight = true;
+                            _coloredBlock[bottomX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorLeft)
+                        {
+                            _coloredBlock[bottomX, leftY] = false;
+                        }
+                        if (colorRight)
+                        {
+                            _coloredBlock[bottomX, rightY] = false;
+                        }
+                    }
+                }
+            }
+
+            if (lastDirection == 1)
+            {
+                if (entry._direction == 0)
+                {
+                    if (hasBottomLeft && hasBottomRight && _coloredBlock[bottomX, leftY] && _coloredBlock[bottomX, rightY])
+                        continue;
+
+                    if (_coloredBlock[bottomX, rightY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasTopLeft && hasBottomLeft)
+                    {
+                        bool colorTop = false;
+                        bool colorBottom = false;
+
+                        if (!_coloredBlock[topX, leftY])
+                        {
+                            colorTop = true;
+                            _coloredBlock[topX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, leftY])
+                        {
+                            colorBottom = true;
+                            _coloredBlock[bottomX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorTop)
+                        {
+                            _coloredBlock[topX, leftY] = false;
+                        }
+                        if (colorBottom)
+                        {
+                            _coloredBlock[bottomX, leftY] = false;
+                        }
+                    }
+                }
+
+                if (entry._direction == 1)
+                {
+                    if (hasTopLeft && hasBottomLeft && _coloredBlock[bottomX, leftY] && _coloredBlock[topX, leftY])
+                        continue;
+
+                    if (hasTopRight)
+                    {
+                        if (_coloredBlock[topX, rightY])
+                        {
+                            if (hasTopTopLeft && hasTopTopRight && _coloredBlock[topTopX, leftY] && _coloredBlock[topTopX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[topX, leftY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[topX, leftY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[topX, leftY] = false;
+                            }
+                        }
+                        else if (hasBottomLeft)
+                        {
+                            if (hasBottomBottomLeft && hasBottomBottomRight && _coloredBlock[bottomBottomX, leftY] && _coloredBlock[bottomBottomX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[bottomX, leftY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[bottomX, leftY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[bottomX, leftY] = false;
+                            }
+                        }
+                    }
+                    else if (hasBottomRight)
+                    {
+                        if (_coloredBlock[bottomX, rightY])
+                        {
+                            if (hasBottomBottomLeft && hasBottomBottomRight && _coloredBlock[bottomBottomX, leftY] && _coloredBlock[bottomBottomX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[bottomX, leftY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[bottomX, leftY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[bottomX, leftY] = false;
+                            }
+                        }
+                    }
+                }
+
+                if (entry._direction == 2)
+                {
+                    if (hasTopRight && hasTopLeft && _coloredBlock[topX, rightY] && _coloredBlock[topX, leftY])
+                        continue;
+
+                    if (_coloredBlock[topX, rightY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasBottomLeft && hasTopLeft)
+                    {
+                        bool colorTop = false;
+                        bool colorBottom = false;
+
+                        if (!_coloredBlock[topX, leftY])
+                        {
+                            colorTop = true;
+                            _coloredBlock[topX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, leftY])
+                        {
+                            colorBottom = true;
+                            _coloredBlock[bottomX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorTop)
+                        {
+                            _coloredBlock[topX, leftY] = false;
+                        }
+                        if (colorBottom)
+                        {
+                            _coloredBlock[bottomX, leftY] = false;
+                        }
+                    }
+                }
+            }
+
+            if (lastDirection == 2)
+            {
+                if (entry._direction == 1)
+                {
+                    if (hasTopLeft && hasBottomLeft && _coloredBlock[bottomX, leftY] && _coloredBlock[topX, leftY])
+                        continue;
+
+                    if (_coloredBlock[bottomX, leftY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasTopLeft && hasTopRight)
+                    {
+                        bool colorLeft = false;
+                        bool colorRight = false;
+
+                        if (!_coloredBlock[topX, leftY])
+                        {
+                            colorLeft = true;
+                            _coloredBlock[topX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[topX, rightY])
+                        {
+                            colorRight = true;
+                            _coloredBlock[topX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorLeft)
+                        {
+                            _coloredBlock[topX, leftY] = false;
+                        }
+                        if (colorRight)
+                        {
+                            _coloredBlock[topX, rightY] = false;
+                        }
+                    }
+                }
+
+                if (entry._direction == 2)
+                {
+                    if (hasTopLeft && hasTopRight && _coloredBlock[topX, leftY] && _coloredBlock[topX, rightY])
+                        continue;
+
+                    if (hasBottomLeft)
+                    {
+                        if (_coloredBlock[bottomX, leftY])
+                        {
+                            if (hasTopLeftLeft && hasBottomLeftLeft && _coloredBlock[topX, leftLeftY] && _coloredBlock[bottomX, leftLeftY])
+                            {
+
+                            }
+                            else if (_coloredBlock[topX, leftY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[topX, leftY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[topX, leftY] = false;
+                            }
+                        }
+                        else if (hasTopRight)
+                        {
+                            if (hasTopRightRight && hasBottomRightRight && _coloredBlock[topX, rightRightY] && _coloredBlock[bottomX, rightRightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[topX, rightY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[topX, rightY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[topX, rightY] = false;
+                            }
+                        }
+                    }
+                    else if (hasBottomRight)
+                    {
+                        if (_coloredBlock[bottomX, rightY])
+                        {
+                            if (hasTopRightRight && hasBottomRightRight && _coloredBlock[topX, rightRightY] && _coloredBlock[bottomX, rightRightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[topX, rightY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[topX, rightY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[topX, rightY] = false;
+                            }
+                        }
+                    }
+                }
+
+                if (entry._direction == 3)
+                {
+                    if (hasTopRight && hasBottomRight && _coloredBlock[bottomX, rightY] && _coloredBlock[topX, rightY])
+                        continue;
+
+                    if (_coloredBlock[bottomX, rightY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasTopLeft && hasTopRight)
+                    {
+                        bool colorLeft = false;
+                        bool colorRight = false;
+
+                        if (!_coloredBlock[topX, leftY])
+                        {
+                            colorLeft = true;
+                            _coloredBlock[topX, leftY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[topX, rightY])
+                        {
+                            colorRight = true;
+                            _coloredBlock[topX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorLeft)
+                        {
+                            _coloredBlock[topX, leftY] = false;
+                        }
+                        if (colorRight)
+                        {
+                            _coloredBlock[topX, rightY] = false;
+                        }
+                    }
+                }
+            }
+
+            if (lastDirection == 3)
+            {
+                if (entry._direction == 0)
+                {
+                    if (hasBottomLeft && hasBottomRight && _coloredBlock[bottomX, leftY] && _coloredBlock[bottomX, rightY])
+                        continue;
+
+                    if (_coloredBlock[bottomX, leftY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasBottomRight && hasTopRight)
+                    {
+                        bool colorTop = false;
+                        bool colorBottom = false;
+
+                        if (!_coloredBlock[topX, rightY])
+                        {
+                            colorTop = true;
+                            _coloredBlock[topX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, rightY])
+                        {
+                            colorBottom = true;
+                            _coloredBlock[bottomX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorTop)
+                        {
+                            _coloredBlock[topX, rightY] = false;
+                        }
+                        if (colorBottom)
+                        {
+                            _coloredBlock[bottomX, rightY] = false;
+                        }
+                    }
+                }
+
+                if (entry._direction == 2)
+                {
+                    if (hasTopRight && hasTopLeft && _coloredBlock[topX, rightY] && _coloredBlock[topX, leftY])
+                        continue;
+
+                    if (_coloredBlock[topX, leftY])
+                    {
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+                    }
+                    else if (hasTopRight && hasBottomRight)
+                    {
+                        bool colorTop = false;
+                        bool colorBottom = false;
+
+                        if (!_coloredBlock[topX, rightY])
+                        {
+                            colorTop = true;
+                            _coloredBlock[topX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        if (!_coloredBlock[bottomX, rightY])
+                        {
+                            colorBottom = true;
+                            _coloredBlock[bottomX, rightY] = true;
+                            colorCount++;
+                        }
+
+                        Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                 entry._direction);
+
+                        if (colorTop)
+                        {
+                            _coloredBlock[topX, rightY] = false;
+                        }
+                        if (colorBottom)
+                        {
+                            _coloredBlock[bottomX, rightY] = false;
+                        }
+                    }
+                }
+
+                if (entry._direction == 3)
+                {
+                    if (hasTopRight && hasBottomRight && _coloredBlock[bottomX, rightY] && _coloredBlock[topX, rightY])
+                        continue;
+
+                    if (hasTopLeft)
+                    {
+                        if (_coloredBlock[topX, leftY])
+                        {
+                            if (hasTopTopLeft && hasTopTopRight && _coloredBlock[topTopX, leftY] && _coloredBlock[topTopX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[topX, rightY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[topX, rightY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[topX, rightY] = false;
+                            }
+                        }
+                        else if (hasBottomRight)
+                        {
+                            if (hasBottomBottomLeft && hasBottomBottomRight && _coloredBlock[bottomBottomX, leftY] && _coloredBlock[bottomBottomX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[bottomX, rightY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[bottomX, rightY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[bottomX, rightY] = false;
+                            }
+                        }
+                    }
+                    else if (hasBottomLeft)
+                    {
+                        if (_coloredBlock[bottomX, leftY])
+                        {
+                            if (hasBottomBottomLeft && hasBottomBottomRight && _coloredBlock[bottomBottomX, leftY] && _coloredBlock[bottomBottomX, rightY])
+                            {
+
+                            }
+                            else if (_coloredBlock[bottomX, rightY])
+                            {
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount,
+                                    entry._direction);
+                            }
+                            else
+                            {
+                                _coloredBlock[bottomX, rightY] = true;
+
+                                Recurse(entry.X, entry.Y, currentSum + entry.EdgeCost, depth + 1, colorCount + 1,
+                                    entry._direction);
+
+                                _coloredBlock[bottomX, rightY] = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (_possibleEdges[entry.X, entry.Y] == 0)
+            {
+                break;
+            }
+
+        }
+
+        foreach (RecursionEntry entry in sideValues)
+        {
+            _possibleEdges[entry.X, entry.Y]++;
+        }
+
+        _possibleEdges[currentX, currentY] = temp;
+
+        _taken[currentX, currentY] = false;
+        sideValues.ForEach(v => _leftList.Add(v.EdgeCost));
+        if (_hasSum)
+        {
+            _leftList.Sort();
+        }
+    }
+
+    struct RecursionEntry
+    {
+        public readonly int X;
+        public readonly int Y;
+        public readonly int EdgeCost;
+        public readonly int _direction;
+
+        public RecursionEntry(int x, int y, int edgeCost, int direction)
+            : this()
+        {
+            EdgeCost = edgeCost;
+            _direction = direction;
+            Y = y;
+            X = x;
+        }
+    }
+}
