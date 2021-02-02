@@ -1,0 +1,145 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Linq;
+
+class Solution
+{
+    static void Main(String[] args)
+    {
+        new Inverse_RMQ().Solve();
+    }
+}
+
+class Inverse_RMQ
+{
+	public void Solve()
+	{
+		var aa = Console.In.ReadToEnd()
+			.Split(new char[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+			.Skip(1)
+			.Select(_s => int.Parse(_s)).ToArray();
+		var ll = aa.Length;
+		var nn = (ll + 1) / 2;
+		var rr = new R[nn];
+		var ss = new int[nn];
+
+		Array.Sort(aa);
+		rr[0].u = aa[0];
+		rr[0].c = 1;
+		for (int i = 1, j = 0; i < ll; ++i)
+		{
+			if (aa[i] == aa[i - 1])
+			{
+				++rr[j].c;
+			}
+			else
+			{
+				if (++j == nn)
+				{
+					Console.WriteLine("NO");
+					return;
+				}
+
+				rr[j].u = aa[i];
+				rr[j].c = 1;
+			}
+		}
+		if (rr[nn - 1].c == 0)
+		{
+			Console.WriteLine("NO");
+			return;
+		}
+
+		Array.Sort(rr);
+		for (int i = nn - 1, n = nn / 2, j = 0, k = 1; i >= 0; --i)
+		{
+			if (rr[i].c != k)
+			{
+				Console.WriteLine("NO");
+				return;
+			}
+			if (++j == n)
+			{
+				j = 0;
+				n /= 2;
+				++k;
+			}
+		}
+
+		aa[0] = rr[0].u;
+		for (int i = 1, n = 2; n <= nn; n *= 2)
+		{
+			for (int k = 0, j = n / 2; j < n; ++j, ++k)
+			{
+				ss[k] = rr[j].u;
+			}
+
+			for (int j = i - n / 2, k = 0; k < n / 2; ++j, ++k)
+			{
+				var p = BinarySearch(aa[j] + 1, ss, k, n / 2 - k); if (p < 0) p = ~p;
+				if (p == n / 2)
+				{
+					Console.WriteLine("NO");
+					return;
+				}
+				aa[i++] = aa[j];
+				aa[i++] = ss[p];
+				if (p != k) Array.Copy(ss, k, ss, k + 1, p - k);
+			}
+		}
+
+		var bb = new StringBuilder();
+		for (var i = 0; i < ll; ++i)
+		{
+			bb.Append(aa[i]);
+			bb.Append(" ");
+		}
+
+		Console.WriteLine("YES");
+		Console.WriteLine(bb.ToString());
+	}
+
+	static int BinarySearch(int element, int[] elements, int index, int length)
+	{
+		if (elements == null
+			|| index < 0
+			|| length < 0
+			|| index + length > elements.Length)
+		{
+			throw new ArgumentException();
+		}
+
+		var begin = index;
+		var end = index + length;
+
+		while (begin < end)
+		{
+			var i = (begin + end) / 2;
+
+			if (elements[i] < element)
+			{
+				begin = i + 1;
+			}
+			else
+			{
+				end = i;
+			}
+		}
+
+		return (end < index + length && elements[end] == element) ? end : ~end;
+	}
+
+	struct R : IComparable<R>
+	{
+		public int u;
+		public int c;
+
+		public int CompareTo(R r)
+		{
+			var x = r.c - c;
+			return x != 0 ? x : (u - r.u);
+		}
+	}
+}
