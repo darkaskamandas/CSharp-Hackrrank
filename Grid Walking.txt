@@ -1,0 +1,95 @@
+using System;
+using System.Linq;
+
+namespace Interviewstreet
+{
+    class Solution
+    {
+        const long Modulo = 1000000007L;
+
+        static void Main()
+        {
+            Times(Int(), Solve_Impl);
+        }
+
+        static void Solve_Impl()
+        {
+            var cnkTbl = new long[1001, 1001];
+            Func<long, long, long> CnkMod = null;
+            CnkMod = (n, k) =>
+            {
+                if (cnkTbl[n, k] == 0)
+                {
+                    if (k == 0 || n == 0) cnkTbl[n, k] = 1;
+                    else if (k > n / 2) cnkTbl[n, k] = CnkMod(n, n - k);
+                    else cnkTbl[n, k] = (CnkMod(n - 1, k) + CnkMod(n - 1, k - 1)) % Modulo;
+                }
+
+                return cnkTbl[n, k];
+            };
+
+            int N, M;
+            IntPair(out N, out M);
+
+            var X = Ints().Select(x => x - 1).ToArray();
+            var D = Ints();
+
+            var DimMoves = new long[N][,];
+            var TotalDimMoves = new long[N, M + 1];
+
+            for (int ix = 0; ix < N; ix++)
+            {
+                var dx = D[ix];
+
+                DimMoves[ix] = new long[dx, M + 1];
+
+                DimMoves[ix][X[ix], 0] = 1;
+                TotalDimMoves[ix, 0] = 1;
+                for (int jx = 1; jx <= M; jx++)
+                {
+                    for (int kx = 0; kx < dx; kx++)
+                    {
+                        DimMoves[ix][kx, jx] = 
+                            ((kx > 0 ? DimMoves[ix][kx - 1, jx - 1] : 0)
+                            + (kx < dx - 1 ? DimMoves[ix][kx + 1, jx - 1] : 0))
+                            % Modulo;
+
+                        TotalDimMoves[ix, jx] += DimMoves[ix][kx, jx];
+                    }
+
+                    TotalDimMoves[ix, jx] %= Modulo;
+                }
+            }
+
+            var rezult = new long[N, M + 1];
+
+            for (int jx = 0; jx <= M; jx++) 
+                rezult[0, jx] = TotalDimMoves[0, jx];
+
+            for (int ix = 1; ix < N; ix++)
+            {
+                for (int jx = 0; jx <= M; jx++)
+                {
+                    for (int kx = 0; kx <= jx; kx++)
+                    {
+                        var s = rezult[ix - 1, kx];
+                        s = (s*TotalDimMoves[ix, jx - kx])%Modulo;
+                        s = (s*CnkMod(jx, jx - kx))%Modulo;
+                        rezult[ix, jx] += s;
+                    }
+
+                    rezult[ix, jx] %= Modulo;
+                }
+            }
+
+            Console.WriteLine(rezult[N-1,M]%Modulo);
+        }
+        
+        static void Times(int T, Action solve, Action pause = null)
+        { while (T-- > 0) { solve(); if (pause != null && T > 0) pause(); } }
+        static string Line() { return Console.ReadLine(); }
+        static int Int() { return int.Parse(Line()); }
+        static void IntPair(out int N, out int M) { var NM = Ints(); N = NM[0]; M = NM[1]; }
+        static int[] Ints() { return Line().Split(' ').Select(int.Parse).ToArray(); }
+    }
+}
