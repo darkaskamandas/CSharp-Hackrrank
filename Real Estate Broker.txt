@@ -1,0 +1,93 @@
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.IO;
+using System.Linq;
+
+class Solution {
+
+    static bool suitable(bool[,] posibility, int c, bool[] vis, int[] h2c)
+    {
+        for (int h = 0; h < vis.Length; h++)
+        {
+            if (!vis[h] && posibility[h, c])
+            {
+                vis[h] = true;
+                if (h2c[h] < 0)
+                {
+                    h2c[h] = c;
+                    return true;
+                }
+                else if(suitable(posibility, h2c[h], vis, h2c))
+                {
+                    h2c[h] = c;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static int realEstateBroker(int[][] clients, int[][] houses)
+    {
+        houses = houses.OrderBy(x => x[0]).ThenByDescending(x=> x[1]).ToArray();
+        clients = clients.OrderByDescending(x => x[0]).ThenBy(x => x[1]).ToArray();
+        
+        int res = 0;
+        var posibility = new bool[houses.Length, clients.Length];
+        for (int c = 0; c < clients.Length; c++)
+        {
+            for (int h = 0; h < houses.Length; h++)
+            {
+                if (
+                    houses[h][0] > clients[c][0] // each client  wants a house with an area greater than 
+                    && houses[h][1] <= clients[c][1] // and a price less than or equal 
+                )
+                {
+                    posibility[h, c] = true;
+                }
+            }
+        }
+        var h2c = new int[houses.Length];
+        for (int h = 0; h < h2c.Length; h++)
+            h2c[h] = -1;
+
+        for (int c = 0; c < clients.Length; c++)
+        {
+            var vis = new bool[houses.Length];
+            if (suitable(posibility, c, vis, h2c))
+                res++;
+        }
+
+        return res;
+    }
+
+    static void Main(string[] args) {
+        TextWriter textWriter = new StreamWriter(@System.Environment.GetEnvironmentVariable("OUTPUT_PATH"), true);
+
+        string[] nm = Console.ReadLine().Split(' ');
+
+        int n = Convert.ToInt32(nm[0]);
+
+        int m = Convert.ToInt32(nm[1]);
+
+        int[][] clients = new int[n][];
+
+        for (int clientsRowItr = 0; clientsRowItr < n; clientsRowItr++) {
+            clients[clientsRowItr] = Array.ConvertAll(Console.ReadLine().Split(' '), clientsTemp => Convert.ToInt32(clientsTemp));
+        }
+
+        int[][] houses = new int[m][];
+
+        for (int housesRowItr = 0; housesRowItr < m; housesRowItr++) {
+            houses[housesRowItr] = Array.ConvertAll(Console.ReadLine().Split(' '), housesTemp => Convert.ToInt32(housesTemp));
+        }
+
+        int result = realEstateBroker(clients, houses);
+
+        textWriter.WriteLine(result);
+
+        textWriter.Flush();
+        textWriter.Close();
+    }
+}
