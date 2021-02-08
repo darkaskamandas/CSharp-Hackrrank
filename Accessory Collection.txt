@@ -1,0 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+class Solution {
+    static void Main(String[] args) {
+        var sb = new StringBuilder();
+        int tc = int.Parse(Console.ReadLine());
+        while (tc-- > 0) {
+            var tmp = Console.ReadLine().Split(' ');
+            int L = int.Parse(tmp[0]);  // number of accessories
+            int A = int.Parse(tmp[1]);  // types of accessories
+            int N = int.Parse(tmp[2]);  // size of choosen subset
+            int D = int.Parse(tmp[3]);  // at least different items
+
+            long ans = -1;
+            if (D > A) {
+                ans = -1;
+            } else if (D == 1) {
+                ans = Math.BigMul(L, A);
+            } else {
+                for (int i = L; i >= 1; i--) {
+                    long ter = sol(L, A, N, D, i);
+                    if (ter > ans) {
+                        ans = ter;
+                    } else if (ans != -1) break;
+                }
+            }
+            sb.Append(ans == -1 ? "SAD" : ans.ToString()).Append("\n");
+        }
+        Console.WriteLine(sb.ToString());
+    }
+    static long sol(long L, long A, long N, long D, long mid) {
+        long p = A - D + 1;
+        long top = mid + (N - 1 - mid * (D - 1));
+        if (top < mid) return -1;
+
+        long sum = mid;
+        long gold = mid * p;
+        for (long i = A; i > p; i--) { sum += top; gold += i * top; }
+
+        long r = p + 1;
+        while (sum > N && r < A) {
+            sum += mid - top;
+            gold += mid * r - top * r;
+            r++;
+        }
+
+        if (L < sum) return -1;
+        if (L == sum) return gold;
+
+        L -= sum;
+        r = p - 1;
+        if (r * mid < L) return -1;
+
+        var fix = L / mid;
+        var rem = L - fix * mid;
+        gold += mid * (q(r) - q(r - fix));
+        gold += rem * (r - fix);
+        return gold;
+    }
+    static long q(long n) {
+        return n * (n + 1) / 2;
+    }
+}
