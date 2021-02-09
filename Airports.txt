@@ -1,0 +1,477 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+
+	class II
+	{
+		public AA L;
+		public AA R;
+	}
+
+	class AA
+	{
+		public int X;
+		public int C;
+	}
+
+    static int[] airports(int d, int[] xx)
+    {
+		var rr = new int[xx.Length];
+		var lx = int.MaxValue;
+		var rx = int.MinValue;
+		var rd = new Random();
+		var aa = new OrderedSet<AA>(rd.Next, (_a, _b) => _a.X - _b.X);
+		var ii = new OrderedSet<II>(rd.Next, (_a, _b) => { var _d = (_a.R.X - _a.L.X) - (_b.R.X - _b.L.X); return _d != 0 ? _d : _a.L.X - _b.L.X; });
+		var a = new AA();
+		var i = new II();
+		for (var k = 0; k < xx.Length; ++k)
+		{
+			var x = xx[k];
+			if (lx > x)
+				lx = x;
+			if (rx < x)
+				rx = x;
+			if (aa.Count > 0)
+			{
+				i.L = aa.ElementAt(0);
+				while (i.L.X <= rx - d)
+				{
+					aa.Remove(i.L);
+					if (aa.Count == 0)
+						break;
+					i.R = aa.ElementAt(0);
+					ii.Remove(i);
+					i.L = i.R;
+				}
+			}
+			if (aa.Count > 0)
+			{
+				i.R = aa.ElementAt(aa.Count - 1);
+				while (i.R.X >= lx + d)
+				{
+					aa.Remove(i.R);
+					if (aa.Count == 0)
+						break;
+					i.L = aa.ElementAt(aa.Count - 1);
+					ii.Remove(i);
+					i.R = i.L;
+				}
+			}
+			if (x > rx - d && x < lx + d)
+			{
+				if (aa.Count == 0)
+					aa.Add(new AA() { X = x, C = 1 });
+				else
+				{
+					a.X = x;
+					var j = aa.IndexOf(a);
+					if (j >= 0)
+						++aa.ElementAt(j).C;
+					else
+					{
+						j = ~j;
+						var b = new AA() { X = x, C = 1 };
+						if (j == aa.Count)
+						{
+							ii.Add(new II()
+							{
+								L = aa.ElementAt(j - 1),
+								R = b
+							});
+							aa.Add(b);
+						}
+						else if (j == 0)
+						{
+							ii.Add(new II()
+							{
+								L = b,
+								R = aa.ElementAt(j)
+							});
+							aa.Add(b);
+						}
+						else
+						{
+							i.L = aa.ElementAt(j - 1);
+							i.R = aa.ElementAt(j);
+							ii.Remove(i);
+							ii.Add(new II()
+							{
+								L = i.L,
+								R = b
+							});
+							ii.Add(new II()
+							{
+								L = b,
+								R = i.R
+							});
+							aa.Add(b);
+						}
+					}
+				}
+			}
+			if (lx + d <= rx - d || aa.Count == 0)
+				rr[k] = 0;
+			else if (lx == rx)
+			{
+				var c = aa.ElementAt(0);
+				rr[k] = c.C == 1 ? 0 : d;
+			}
+			else if (aa.Count == 1)
+			{
+				var c = aa.ElementAt(0);
+				var lp = d - (c.X - lx);
+				var rp = d - (rx - c.X);
+				rr[k] = Math.Min(lp, rp);
+			}
+			else
+			{
+				var l = aa.ElementAt(0);
+				var r = aa.ElementAt(aa.Count - 1);
+				var m = ii.ElementAt(ii.Count - 1);
+				if (l.X != lx)
+				{
+					var lp = d - (l.X - lx);
+					var rp = d - (rx - r.X);
+					var mp = d - (rx - m.L.X) + d - (m.R.X - lx);
+					rr[k] = Math.Min(mp, Math.Min(lp, rp));
+				}
+				else if ((m.L.X == lx && m.L.C == 1) || (m.R.X == rx && m.R.C == 1))
+					rr[k] = d - (m.R.X - m.L.X);
+				else
+				{
+					var lp = d - (l.C > 1 ? 0 : aa.ElementAt(1).X - l.X);
+					var rp = d - (r.C > 1 ? 0 : r.X - aa.ElementAt(aa.Count - 2).X);
+					var mp = d - (rx - m.L.X) + d - (m.R.X - lx);
+					rr[k] = Math.Min(mp, Math.Min(lp, rp));
+				}
+			}
+		}
+		return rr;
+    }
+
+    static void Main(String[] args) {
+        int q = Convert.ToInt32(Console.ReadLine());
+        for(int a0 = 0; a0 < q; a0++){
+            string[] tokens_n = Console.ReadLine().Split(' ');
+            int n = Convert.ToInt32(tokens_n[0]);
+            int d = Convert.ToInt32(tokens_n[1]);
+            string[] x_temp = Console.ReadLine().Split(' ');
+            int[] x = Array.ConvertAll(x_temp,Int32.Parse);
+            int[] result = airports(d, x);
+            Console.WriteLine(String.Join(" ", result));
+
+
+        }
+    }
+}
+
+class OrderedSet<E>
+{
+	public OrderedSet(Func<int> getPriority, Func<E, E, int> compareElements)
+	{
+		Configure(getPriority, compareElements);
+	}
+
+	public void Clear()
+	{
+		root = null;
+	}
+
+	public void Configure(Func<int> getPriority, Func<E, E, int> compareElements)
+	{
+		if (getPriority == null || compareElements == null)
+			throw new ArgumentNullException();
+		Clear();
+		GetPriority = getPriority;
+		CompareElements = compareElements;
+	}
+
+	public int Count
+	{
+		get
+		{
+			return CountOf(root);
+		}
+	}
+
+	public E ElementAt(int index)
+	{
+		if (index < 0 || index >= CountOf(root))
+			throw new IndexOutOfRangeException();
+		return NodeAt(index).Element;
+	}
+
+	Node NodeAt(int index)
+	{
+		var t = root;
+		while (true)
+		{
+			var i = CountOf(t.Left);
+			if (i == index)
+				break;
+			if (index < i)
+				t = t.Left;
+			else
+			{
+				index -= 1 + i;
+				t = t.Right;
+			}
+		}
+		return t;
+	}
+
+	public int IndexOf(E element)
+	{
+		var i = 0;
+		var t = root;
+		while (t != null)
+		{
+			var c = CompareElements(element, t.Element);
+			if (c < 0)
+				t = t.Left;
+			else
+			{
+				i += 1 + CountOf(t.Left);
+				if (c == 0)
+					break;
+				t = t.Right;
+			}
+		}
+		return t == null ? ~i : i - 1;
+	}
+
+	public bool Add(E element)
+	{
+		var o = GetPriority();
+		var b = 0;
+		Node p = null;
+		Node q = null;
+		var t = root;
+		while (t != null)
+		{
+			var c = CompareElements(element, t.Element);
+			if (c == 0)
+				return false;
+			if (o <= t.Priority)
+			{
+				p = t;
+				b = c;
+			}
+			else if (q == null)
+				q = t;
+			t = c < 0 ? t.Left : t.Right;
+		}
+		var count = checked(Count + 1);
+		var n = new Node()
+		{
+			Element = element,
+			Priority = o,
+			Count = 1
+		};
+		if (q != null)
+		{
+			Split(q, element, true, out n.Left, out n.Right);
+			if (n.Left != null)
+			{
+				n.Left.Parent = n;
+				n.Count += n.Left.Count;
+			}
+			if (n.Right != null)
+			{
+				n.Right.Parent = n;
+				n.Count += n.Right.Count;
+			}
+		}
+		if (p == null)
+			root = n;
+		else
+		{
+			if (b < 0)
+				p.Left = n;
+			else
+				p.Right = n;
+			n.Parent = p;
+			while ((n = n.Parent) != null)
+				++n.Count;
+		}
+		return true;
+	}
+
+	public bool Remove(E element)
+	{
+		Node p = null;
+		var t = root;
+		while (true)
+		{
+			if (t == null)
+				return false;
+			var c = CompareElements(element, t.Element);
+			if (c == 0)
+				break;
+			p = t;
+			t = c < 0 ? t.Left : t.Right;
+		}
+		var n = Merge(t.Left, t.Right);
+		if (p == null)
+			root = n;
+		else
+		{
+			if (p.Left == t)
+				p.Left = n;
+			else
+				p.Right = n;
+			if (n != null)
+				n.Parent = p;
+			for (; p != null; p = p.Parent)
+				--p.Count;
+		}
+		return true;
+	}
+
+	Node Merge(Node left, Node right)
+	{
+		if (left == null)
+		{
+			if (right != null)
+				right.Parent = null;
+			return right;
+		}
+		if (right == null)
+		{
+			if (left != null)
+				left.Parent = null;
+			return left;
+		}
+		var e = false;
+		Node r = null;
+		Node p = null;
+		if (left.Priority >= right.Priority)
+		{
+			r = left;
+			e = true;
+			p = left;
+			p.Count += right.Count;
+			left = left.Right;
+		}
+		else
+		{
+			r = right;
+			e = false;
+			p = right;
+			p.Count += left.Count;
+			right = right.Left;
+		}
+		r.Parent = null;
+		while (true)
+		{
+			if (right == null)
+			{
+				if (!e)
+				{
+					p.Left = left;
+					left.Parent = p;
+				}
+				break;
+			}
+			if (left == null)
+			{
+				if (e)
+				{
+					p.Right = right;
+					right.Parent = p;
+				}
+				break;
+			}
+			if (left.Priority >= right.Priority)
+			{
+				if (!e)
+				{
+					e = true;
+					p.Left = left;
+					left.Parent = p;
+				}
+				p = left;
+				p.Count += right.Count;
+				left = left.Right;
+			}
+			else
+			{
+				if (e)
+				{
+					e = false;
+					p.Right = right;
+					right.Parent = p;
+				}
+				p = right;
+				p.Count += left.Count;
+				right = right.Left;
+			}
+		}
+		return r;
+	}
+
+	void Split(Node t, E element, bool isLeft, out Node left, out Node right)
+	{
+		left = null;
+		right = null;
+		Node l = null;
+		Node r = null;
+		while (t != null)
+		{
+			var c = CompareElements(t.Element, element);
+			if (c < 0 || (c == 0 && isLeft))
+			{
+				if (l == null)
+					left = t;
+				else
+					l.Right = t;
+				t.Parent = l;
+				l = t;
+				t = t.Right;
+			}
+			else
+			{
+				if (r == null)
+					right = t;
+				else
+					r.Left = t;
+				t.Parent = r;
+				r = t;
+				t = t.Left;
+			}
+		}
+		if (l != null)
+			l.Right = null;
+		if (r != null)
+			r.Left = null;
+		PropagateUpwards(l);
+		PropagateUpwards(r);
+	}
+
+	void PropagateUpwards(Node t, Node a = null)
+	{
+		for (; t != a; t = t.Parent)
+			t.Count = 1 + CountOf(t.Left) + CountOf(t.Right);
+	}
+
+	static int CountOf(Node t)
+	{
+		return t == null ? 0 : t.Count;
+	}
+
+	class Node
+	{
+		public E Element;
+		public int Priority;
+		public int Count;
+		public Node Parent;
+		public Node Left;
+		public Node Right;
+	}
+
+	Node root;
+	Func<int> GetPriority;
+	Func<E, E, int> CompareElements;
+}

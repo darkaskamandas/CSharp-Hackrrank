@@ -1,0 +1,84 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+class Solution
+{
+    static int n, m, maxD;
+    static StringBuilder ans;
+    static int d = 10000;
+    static List<int>[] adj;
+    static void Main(String[] args)
+    {
+        var tmp = Console.ReadLine().Split(' ');
+        n = int.Parse(tmp[0]);
+        m = int.Parse(tmp[1]);
+        adj = new List<int>[n];
+
+
+
+        adj[0] = new List<int>();
+        int current = m + 1;
+        Queue<int> q1 = new Queue<int>();
+        Queue<int> q2 = new Queue<int>();
+        for (int i = 1; i <= m; i++) {
+            adj[0].Add(i % n);
+            q2.Enqueue(i % n);
+        }
+
+
+        while (q2.Count > 0) {
+            var t__ = q1; q1 = q2; q2 = t__;
+            while (q1.Count > 0) {
+                int i = q1.Dequeue();
+                adj[i] = new List<int>();
+                for (int j = 0; j < m; j++) {
+                    adj[i].Add(current % n);
+                    if (current < n) q2.Enqueue(current % n);
+                    current++;
+                }
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (adj[i].Count < m) {
+                for (int j = 0; j < n && adj[i].Count < m; j++) {
+                    if (!adj[i].Contains(j)) adj[i].Add(j);
+                }
+            }
+        }
+
+        maxD = 1 + (int)Math.Ceiling(Math.Log10(n) / Math.Log10(m));
+        d = getDiameter();
+        ans = new StringBuilder();
+        for (int i = 0; i < n; i++)
+            ans.Append(string.Join(" ", adj[i])).Append("\n");
+
+        Console.WriteLine(d);
+        Console.WriteLine(ans.ToString());
+    }
+
+    static int getDiameter()
+    {
+        int[] distance = new int[n];
+
+        int r = 0;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) distance[j] = 1000000;
+            dfs(i, distance, 0);
+            r = Math.Max(r, distance.Max());
+        }
+        return r;
+    }
+
+    static void dfs(int i, int[] dist, int cur)
+    {
+        if (cur >= maxD) return;
+        if (dist[i] < cur) return;
+        dist[i] = cur;
+        foreach (var item in adj[i]) {
+            dfs(item, dist, cur + 1);
+        }
+    }
+}

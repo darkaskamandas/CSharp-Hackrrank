@@ -1,0 +1,262 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Numerics;
+using System.Linq;
+
+
+namespace Solution
+{
+  class Program
+  {
+    static void Main(string[] args)
+    {
+      //Console.WriteLine((5 * (long)598946612) % 998244353);
+      //Console.WriteLine(BigInteger.Remainder(5*BigInteger.ModPow(12, 998244353 - 2, 998244353), 998244353));
+      //using (var provider = new ImputProvider("out.txt"))
+      //{
+      //  var str1 = provider.GetLine();
+      //  var str2 = provider.GetLine();
+      //  for (int i = 0; i < str1.Length; i++)
+      //  {
+      //    if (str1[i] != str2[i])
+      //      break;
+      //  }
+      //}
+
+      //Stopwatch stopwatch = Stopwatch.StartNew();
+      using (var provider = new ImputProvider("test.txt"))
+      {
+        new Solution(provider);
+      }
+      //stopwatch.Stop();
+      //Console.WriteLine(stopwatch.Elapsed);
+      Console.ReadKey();
+    }
+
+    public class Solution
+    {
+      long[] next;
+      long[] cycleSizes;
+      long[] scc;
+      public Solution(IImputProvider provider)
+      {
+        long[] nmk = provider.GetArray(long.Parse);
+        next = provider.GetArray(long.Parse);
+        for (int i = 0; i < next.Length; i++)
+        {
+          next[i]--;
+        }
+        cycleSizes = new long[next.Length];
+        scc = new long[next.Length];
+        for (int i = 0; i < scc.Length; i++)
+        {
+          scc[i] = i;
+        }
+        long[] probabilities = provider.GetArray(long.Parse);
+
+
+        const long M = 998244353;
+        long pStart = modulo(nmk[0], M - 2, M);
+
+        //InitCyles();
+
+        long[,] dp = new long[nmk[2] + 1, nmk[0]];
+        for (int i = 0; i < nmk[0]; i++)
+        {
+          dp[0, i] = pStart;
+        }
+        for (int k = 1; k <= nmk[2]; k++)
+        {
+          for (int start = 0; start < nmk[0]; start++)
+          {
+            //if (cycleSizes[start] == 1)
+            //{
+            //  dp[k, start] = dp[k - 1, start];
+            //  continue;
+            //}
+            //else //if (cycleSizes[start] == 0)
+            //{
+            int step = 0;
+            long current = start;
+            while (step < nmk[1])
+            {
+              dp[k, current] += dp[k - 1, start] * probabilities[step];
+              dp[k, current] = mod(dp[k, current], M);
+              current = GetNext(current);
+              step++;
+            }
+            //}
+          }
+        }
+
+        //long sum = 0;
+        for (int i = 0; i < nmk[0]; i++)
+        {
+          //sum += dp[nmk[2], i];
+          Console.WriteLine(dp[nmk[2], i]);
+        }
+        //Console.WriteLine(mod(sum, M));
+      }
+
+
+      private void InitCyles()
+      {
+        bool[] marked = new bool[next.Length];
+
+        for (int i = 0; i < next.Length; i++)
+        {
+          if (marked[i]) continue;
+
+          long slow = i;
+          long fast = GetNext(slow);
+          while (slow != fast)
+          {
+            marked[slow] = true;
+            marked[fast] = true;
+            slow = GetNext(slow);
+            fast = GetNext(GetNext(fast));
+          }
+
+          if (slow == fast)
+          {
+            long cycleSize = 0;
+            long current = slow;
+            long smallest = current;
+            do
+            {
+              current = GetNext(current);
+              smallest = Math.Min(current, smallest);
+              cycleSize++;
+            } while (current != slow);
+
+            current = slow;
+            do
+            {
+              scc[current] = smallest;
+              cycleSizes[current] = cycleSize;
+              current = GetNext(current);
+            } while (current != slow);
+          }
+        }
+      }
+
+      private long GetNext(long i)
+      {
+        return next[i];
+      }
+
+      static long mod(long a, long mod)
+      {
+        return ((a % mod) + mod) % mod;
+      }
+
+      static long modulo(long a, long b, long c)
+      {
+        long x = 1, y = a; // long long is taken to avoid overflow of intermediate results
+        while (b > 0)
+        {
+          if (b % 2 == 1)
+          {
+            x = (x * y) % c;
+          }
+          y = (y * y) % c; // squaring the base
+          b /= 2;
+        }
+        return x % c;
+      }
+    }
+
+
+    public interface IImputProvider
+    {
+      bool IsEmpty();
+
+      string GetLine();
+
+      int GetNextInt32();
+
+      long GetNextInt64();
+
+      double GetNextDouble();
+
+      decimal GetNextDecimal();
+
+      T[] GetArray<T>(Func<string, T> parser);
+    }
+
+
+    public class ImputProvider : IImputProvider, IDisposable
+    {
+      private StreamReader reader;
+      public ImputProvider()
+      {
+
+      }
+      public ImputProvider(string path)
+      {
+        if (File.Exists(path))
+          reader = new StreamReader(path);
+      }
+
+      public bool IsEmpty()
+      {
+        if (reader == null)
+          return false;
+        return reader.EndOfStream;
+      }
+
+      public string GetLine()
+      {
+        if (reader == null)
+          return Console.ReadLine().Trim();
+        return reader.ReadLine();
+      }
+
+      public int GetNextInt32()
+      {
+        return int.Parse(GetLine());
+      }
+
+      public uint GetNextUInt32()
+      {
+        return uint.Parse(GetLine());
+      }
+
+      public long GetNextInt64()
+      {
+        return long.Parse(GetLine());
+      }
+
+      public double GetNextDouble()
+      {
+        return double.Parse(GetLine());
+      }
+
+      public decimal GetNextDecimal()
+      {
+        return decimal.Parse(GetLine());
+      }
+
+      public T[] GetArray<T>(Func<string, T> parser)
+      {
+        string[] elements = GetLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        T[] array = new T[elements.Length];
+        for (int i = 0; i < elements.Length; i++)
+        {
+          array[i] = parser(elements[i]);
+        }
+        return array;
+      }
+
+      public void Dispose()
+      {
+        if (reader == null) return;
+        reader.Dispose();
+      }
+
+
+    }
+
+  }
+}
