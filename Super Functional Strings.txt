@@ -1,0 +1,339 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace HackerRanking
+{
+    internal class SolutionSuperFunctionalString
+    {
+        private static void Main(String[] args)
+        {
+            /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+            TextReader reader = null;
+            try
+            {
+                reader = File.OpenText(@"c:\temp\input0X-PseudoIsomorphic.txt");
+                reader = new StringReader(@"3
+aa
+aba
+abc");
+            }
+            catch
+            {
+                reader = Console.In;
+            }
+            if (reader == null)
+                return;
+
+
+            var t = Int32.Parse(reader.ReadLine());
+            for (int i = 0; i < t; i++)
+            {
+                var s = reader.ReadLine();
+                var res = PowerSumDistinct(s);
+                Console.WriteLine((long) res);
+            }
+
+        }
+
+        public static long MOD = 1000000007;
+
+         public static long[] powCached = new long[100000*27];
+
+       public static long ipow(int j, int distinctCount, bool flag)
+        {
+            if (powCached[j + 100000 * distinctCount] > 0)
+                return powCached[j + 100000 * distinctCount];
+            var pow = 1L;
+            for (int k = 0; k < distinctCount; k++)
+            {
+                pow *= j;
+                pow = pow % MOD;
+            }
+            powCached[j + 100000 * distinctCount] = pow;
+            return pow;
+        }
+
+        static long ipow(int base_in, int exp)
+        {
+            long result = 1;
+            long @base = (long) base_in;
+
+            if (exp == 1)
+                return @base;
+            if (powCached[base_in + 100000 * exp] > 0)
+                return powCached[base_in + 100000 * exp];
+
+
+            while (exp > 0)
+            {
+                if ((exp & 1) > 0)
+                {
+                    result *= @base;
+                    result %= MOD;
+                }
+                exp >>= 1;
+                @base *= @base;
+                @base %= MOD;
+            }
+            powCached[base_in + 100000 * exp] = result;
+            return ((int)result);
+        }
+
+        public struct CharPos : IComparable<CharPos>
+        {
+            public char c;
+            public int pos;
+            public int CompareTo(CharPos other)
+            {
+                return pos.CompareTo(other.pos);
+            }
+
+            public override string ToString()
+            {
+                return string.Format("{0}@{1}", c, pos);
+            }
+        }
+
+        public static long PowerSumDistinct(string s)
+        {
+            //  method to return count of total distinct substring
+            int n = s.Length;
+            //  calculating suffix array and lcp array
+            var a = new int[s.Length + 1];
+            for (var i = 0; i < s.Length; i++)
+                a[i] = s[i];
+            var sa = SuffixArray.buildSuffixArray(a);
+            var where = new int[sa.Length];
+            for (int i = 1; i < sa.Length; i++)
+                where[n-sa[i]-1] = i-1;
+
+            var lcp = SuffixArray.getLCP(sa, a);
+            var next = new int[s.Length + 1];
+            var map = new int[26];
+            var dq = new SortedSet<CharPos>();
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (map[s[i] - 'a'] == 0)
+                {
+                    map[s[i] - 'a'] = i + 1;
+                    dq.Add(new CharPos {c = s[i], pos = i});
+                }
+                else
+                {
+                    next[map[s[i] - 'a'] - 1] = i;
+                    map[s[i] - 'a'] = i + 1;
+                }
+            }
+
+            long result = 0;
+            for (int i = n-1; i >= 0; i--)
+            {
+                var llcp = lcp[where[i]];
+                var pos = n - i - 1;
+                var pow = 0;
+                var prevPos = new CharPos();
+                var ssum = 0L;
+                foreach (var charPos in dq)
+                {
+                    if (pow == 0)
+                    {
+                        prevPos = charPos;
+                        pow += 1;
+                        continue;
+                    }
+                    var start = Math.Max(llcp, prevPos.pos-pos);
+                    var end = charPos.pos - pos;
+                    var psum = (start < end)?SumPowers(end, pow) - SumPowers(start, pow):0;
+                    ssum += psum>=0?psum:MOD+psum;
+                    prevPos = charPos;
+                    pow += 1;
+                }
+                var start1 = Math.Max(llcp, prevPos.pos-pos);
+                var psum1 = SumPowers(i+1, pow) - SumPowers(start1, pow);
+                ssum += psum1 > 0 ? psum1 : MOD + psum1;
+                ssum = ssum%MOD;
+                result += ssum;
+                var flag = dq.Remove(new CharPos {c = s[pos], pos = pos});
+                if(next[pos] > 0)
+                    dq.Add(new CharPos { c = s[pos], pos = next[pos] });
+            }
+
+
+            return result%MOD;
+
+        }
+
+        public static long[] sumPowCached = createSumPowers();
+        public static long[] createSumPowers()
+        {
+            var cache = new long[100000 * 27];
+            for (int i = 1; i < 100000; i++)
+            {
+                var bs = 1L;
+                for (int j = 1; j < 27; j++)
+                {
+                    bs *= i;
+                    bs = bs % MOD;
+                    cache[i + 100000 * j] = (cache[i-1 + 100000 * j] + bs) % MOD;
+                }
+            }
+            return cache;
+        }
+
+        public static long SumPowers(int n, int pow)
+        {
+            if (sumPowCached[n + 100000*pow] > 0)
+                return sumPowCached[n + 100000*pow];
+
+            var res = 0L;
+            for (int i = 1; i <= n; i++)
+            {
+                res += ipow(i, pow);
+                res %= MOD;
+            }
+            return res;
+        }
+
+
+
+    }
+    
+    public class SparseTableMin
+    {
+        private int[][] min;
+        private int[] h;
+
+        public SparseTableMin(int[] a)
+        {
+            h = new int[a.Length + 1];
+            h[1] = 0;
+            for (var i = 2; i < h.Length; i++)
+                h[i] = h[i >> 1] + 1;
+
+            min = new int[h[h.Length - 1] + 1][];
+            for (var i = 0; i < min.Length; i++)
+                min[i] = new int[a.Length];
+
+            for (var i = 0; i < a.Length; i++)
+                min[0][i] = a[i];
+
+            for (var i = 1; i < min.Length; i++)
+            {
+                var prev = min[i - 1];
+                var mini = min[i];
+                for (var v = 0; v < a.Length; v++)
+                {
+                    if (v + (1 << (i - 1)) < a.Length)
+                        mini[v] = Math.Min(prev[v], prev[v + (1 << (i - 1))]);
+                    else
+                        mini[v] = prev[v];
+                }
+            }
+        }
+
+        public int getMin(int left, int right)
+        {
+            if (right <= left)
+                return int.MaxValue;
+            var k = h[right - left];
+            var mink = min[k];
+            var res = Math.Min(mink[left], mink[right - (1 << k)]);
+            return res;
+        }
+
+    }
+
+    public class SuffixArray
+    {
+        public static int[] buildSuffixArray(int[] s)
+        {
+            var n = s.Length;
+            var alphabet = 0;
+            foreach (var i in s)
+            {
+                alphabet = Math.Max(alphabet, i);
+            }
+            ++alphabet;
+            var h = new int[Math.Max(n, alphabet)];
+            var c = new int[n];
+            var d = new int[n];
+            var count = new int[alphabet];
+            for (var i = 0; i < n; i++)
+            {
+                c[i] = s[i];
+                count[c[i]]++;
+            }
+            for (var i = 1; i < alphabet; i++)
+                h[i] = h[i - 1] + count[i - 1];
+
+            var a = new int[n];
+            var b = new int[n];
+            {
+                var g = (int[])h.Clone();
+                for (var i = 0; i < n; i++)
+                    a[g[c[i]]++] = i;
+            }
+
+            for (var w = 1; w < n; w <<= 1)
+            {
+                for (var i = 0; i < n; i++)
+                {
+                    var j = good(a[i] - w + n, n);
+                    b[h[c[j]]++] = j;
+                }
+                var nc = 0;
+                h[nc++] = 0;
+                d[b[0]] = 0;
+                for (var i = 1; i < n; i++)
+                {
+                    if (c[b[i]] != c[b[i - 1]] || c[good(b[i] + w, n)] != c[good(b[i - 1] + w, n)])
+                        h[nc++] = i;
+                    d[b[i]] = nc - 1;
+                }
+                var t = a;
+                a = b;
+                b = t;
+                t = c;
+                c = d;
+                d = t;
+            }
+            return a;
+        }
+
+        private static int good(int x, int n)
+        {
+            if (x >= n)
+                x -= n;
+            return x;
+        }
+
+        public static int[] getLCP(int[] sa, int[] a)
+        {
+            var k = 0;
+            var n = a.Length;
+            var rev = new int[n];
+            for (var i = 0; i < n; i++)
+                rev[sa[i]] = i;
+
+            var lcp = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                k = Math.Max(k - 1, 0);
+                var j = rev[i] + 1;
+                if (j >= n)
+                    continue;
+                j = sa[j];
+                while (i + k < n && j + k < n && a[i + k] == a[j + k])
+                    ++k;
+                lcp[rev[i]] = k;
+            }
+            return lcp;
+        }
+
+    }
+    
+    
+}
+
