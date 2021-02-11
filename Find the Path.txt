@@ -1,0 +1,514 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+class Solution
+{
+    static short[][] matrix;
+    static int n;
+    static int m;
+    static int q;
+    static int[][,,] distances = new int[numPartitions][,,];
+    const int numPartitions = 14;
+
+    static void Main()
+    {
+        ExtractDataFromConsole();
+        PreprocessGraph();
+        PerformQueries();
+    }
+
+    static void ExtractDataFromConsole()
+    {
+        int[] parameters = Array.ConvertAll(Console.ReadLine().Split(' '), int.Parse);
+        n = parameters[0];
+        m = parameters[1];
+
+        short[][] matrix = new short[n][];
+        for (int y = 0; y < n; y++)
+        {
+            matrix[y] = Array.ConvertAll(Console.ReadLine().Trim().Split(' '), short.Parse);
+        }
+        Solution.matrix = matrix;
+
+        q = int.Parse(Console.ReadLine());
+    }
+
+    static void PreprocessGraph()
+    {
+        for (int i = 1; i < numPartitions; i++)
+        {
+            distances[i] = new int[m, n, n];
+        }
+        for (int y = 0; y < n; y++)
+        {
+            for (int i = 1; i < numPartitions; i++)
+            {
+                AllDijkstra(new Coord(i * m / numPartitions, y), y, distances[i]);
+            }
+        }
+    }
+
+    static void PerformQueries()
+    {
+        if (m * n < 1000)
+        {
+            PerformQueriesBasic();
+        }
+        else
+        {
+            PerformQueriesAdvanced();
+        }
+    }
+
+    static void AllDijkstra(Coord start, int height, int[,,] distances)
+    {
+        bool[] visited = new bool[m * n];
+        short[][] matrix = Solution.matrix;
+        int startWeight = matrix[start.y][start.x];
+        var q = new IntegerQueue();
+        q.Enqueue(new Node(start, startWeight));
+        visited[start.x + start.y * m] = true;
+        int newDistance;
+        int numFinished = 0;
+        int total = m * n;
+        while (q.Count > 0 && numFinished < total)
+        {
+            numFinished++;
+            Node current = q.Dequeue();
+            Coord coord = current.value;
+            int x = coord.x;
+            int y = coord.y;
+            int distance = current.weight;
+            distances[x, y, height] = distance;
+            int right = x + 1;
+            int left = x - 1;
+            int up = y + 1;
+            int down = y - 1;
+            if (right < m && !visited[right + y * m])
+            {
+                newDistance = distance + matrix[y][right];
+                q.Enqueue(new Node(new Coord(right, y), newDistance));
+                visited[right + y * m] = true;
+            }
+            if (left >= 0 && !visited[left + y * m])
+            {
+                newDistance = distance + matrix[y][left];
+                q.Enqueue(new Node(new Coord(left, y), newDistance));
+                visited[left + y * m] = true;
+            }
+            if (up < n && !visited[x + up * m])
+            {
+                newDistance = distance + matrix[up][x];
+                q.Enqueue(new Node(new Coord(x, up), newDistance));
+                visited[x + up * m] = true;
+            }
+            if (down >= 0 && !visited[x + down * m])
+            {
+                newDistance = distance + matrix[down][x];
+                q.Enqueue(new Node(new Coord(x, down), newDistance));
+                visited[x + down * m] = true;
+            }
+        }
+    }
+
+    static int Solve(Coord start, Coord end, short[][] matrix, int lowerBound, int upperBound)
+    {
+        if (start == end)
+        {
+            return matrix[start.y][start.x];
+        }
+        int m = Solution.m;
+        int n = Solution.n;
+        bool[] visited = new bool[m * n];
+        short endValue = matrix[end.y][end.x];
+        int startWeight = matrix[start.y][start.x] + endValue;
+        matrix[end.y][end.x] = 0;
+        var q = new IntegerQueue();
+        q.Enqueue(new Node(start, startWeight));
+        visited[start.x + start.y * m] = true;
+        int newDistance;
+        while (q.Count > 0)
+        {
+            Node current = q.Dequeue();
+            Coord coord = current.value;
+            if (coord == end)
+            {
+                matrix[end.y][end.x] = endValue;
+                return current.weight;
+            }
+            int x = coord.x;
+            int y = coord.y;
+
+            int distance = current.weight;
+
+            int right = x + 1;
+            int left = x - 1;
+            int up = y + 1;
+            int down = y - 1;
+            if (right < upperBound && !visited[right + y * m])
+            {
+                newDistance = distance + matrix[y][right];
+                q.Enqueue(new Node(new Coord(right, y), newDistance));
+                visited[right + y * m] = true;
+            }
+            if (left >= lowerBound && !visited[left + y * m])
+            {
+                newDistance = distance + matrix[y][left];
+                q.Enqueue(new Node(new Coord(left, y), newDistance));
+                visited[left + y * m] = true;
+            }
+            if (up < n && !visited[x + up * m])
+            {
+                newDistance = distance + matrix[up][x];
+                q.Enqueue(new Node(new Coord(x, up), newDistance));
+                visited[x + up * m] = true;
+            }
+            if (down >= 0 && !visited[x + down * m])
+            {
+                newDistance = distance + matrix[down][x];
+                q.Enqueue(new Node(new Coord(x, down), newDistance));
+                visited[x + down * m] = true;
+            }
+        }
+        throw new Exception("No path found from " + start + " to " + end);
+    }
+
+    static void PerformQueriesAdvanced()
+    {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < q; i++)
+        {
+            int[] coordinates = Array.ConvertAll(Console.ReadLine().Split(' '), int.Parse);
+            Coord one = new Coord(coordinates[1], coordinates[0]);
+            Coord two = new Coord(coordinates[3], coordinates[2]);
+            if (two.x < one.x)
+            {
+                Coord temp = one;
+                one = two;
+                two = temp;
+            }
+            int solution = -1;
+            for (int k = 1; k < numPartitions; k++)
+            {
+                int x = k * m / numPartitions;
+                if (one.x < x && two.x > x)
+                {
+                    solution = ComputeCachedDistance(one, two, distances[k], x);
+
+                }
+                else if (one.x == x)
+                {
+                    solution = distances[k][two.x, two.y, one.y];
+
+                }
+                else if (two.x == x)
+                {
+                    solution = distances[k][one.x, one.y, two.y];
+                }
+            }
+            if (solution == -1)
+            {
+                int leftPartition = numPartitions * one.x / m;
+                int rightPartition = leftPartition + 1;
+                int leftShift = leftPartition * m / numPartitions;
+                int rightShift = rightPartition * m / numPartitions;
+                //Coord oneShifted = new Coord(one.x - (leftShift > 0 ? leftShift + 1 : leftShift), one.y);
+                //Coord twoShifted = new Coord(two.x - (leftShift > 0 ? leftShift + 1 : leftShift), two.y);
+                //int oneSidedSolution = Solve(oneShifted, twoShifted, submatrices[leftPartition]);
+                int oneSidedSolution = Solve(one, two, matrix, (leftShift > 0 ? leftShift + 1 : leftShift), rightShift);
+                int leftBest = int.MaxValue;
+                int rightBest = int.MaxValue;
+                if (leftPartition > 0)
+                {
+                    leftBest = ComputeCachedDistance(one, two, distances[leftPartition], leftShift);
+                }
+                if (leftPartition < numPartitions - 1)
+                {
+                    rightBest = ComputeCachedDistance(one, two, distances[rightPartition], rightShift);
+                }
+                solution = Math.Min(Math.Min(rightBest, leftBest), oneSidedSolution);
+
+            }
+            sb.AppendLine(solution.ToString());
+        }
+        Console.WriteLine(sb.ToString());
+    }
+
+    static void PerformQueriesBasic()
+    {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < q; i++)
+        {
+            int[] coordinates = Array.ConvertAll(Console.ReadLine().Split(' '), int.Parse);
+            Coord one = new Coord(coordinates[1], coordinates[0]);
+            Coord two = new Coord(coordinates[3], coordinates[2]);
+            sb.AppendLine(Solve(one, two, matrix, 0, m).ToString());
+        }
+        Console.WriteLine(sb.ToString());
+    }
+
+    static int ComputeCachedDistance(Coord start, Coord end, int[,,] distances, int x)
+    {
+        int best = int.MaxValue;
+        for (int y = 0; y < n; y++)
+        {
+            int distance = distances[start.x, start.y, y] + distances[end.x, end.y, y] - matrix[y][x];
+            if (distance < best)
+            {
+                best = distance;
+            }
+        }
+        return best;
+    }
+}
+
+class QueueNode
+{
+    public Node value;
+    public QueueNode next;
+
+    public QueueNode(Node value, QueueNode next = null)
+    {
+        this.value = value;
+        this.next = next;
+    }
+}
+
+class IntegerQueue
+{
+    const int MAX_PATH_WEIGHT = 15018000;
+    static QueueNode[] queue = new QueueNode[MAX_PATH_WEIGHT + 1];
+    static short[] numNodes = new short[MAX_PATH_WEIGHT + 1];
+    int currentMin = 0;
+    static List<int> occupied = new List<int>(MAX_PATH_WEIGHT);
+
+    public int Count = 0;
+
+    public IntegerQueue()
+    {
+        Clear();
+    }
+
+    public void Enqueue(Node node)
+    {
+        int weight = node.weight;
+        numNodes[weight]++;
+        if (Count == 0 || weight < currentMin)
+        {
+            currentMin = weight;
+        }
+        occupied.Add(weight);
+        queue[weight] = new QueueNode(node, queue[weight]);
+        Count++;
+    }
+
+    public Node Dequeue()
+    {
+        int toRemove = currentMin;
+        numNodes[toRemove]--;
+        Count--;
+        if (numNodes[toRemove] == 0)
+        {
+            FindNewMin();
+        }
+        Node node = queue[toRemove].value;
+        queue[toRemove] = queue[toRemove].next;
+        return node;
+    }
+
+    public Node Peek()
+    {
+        return queue[currentMin].value;
+    }
+
+    void Clear()
+    {
+        var occupied = IntegerQueue.occupied;
+        var numNodes = IntegerQueue.numNodes;
+        var queue = IntegerQueue.queue;
+        for (int i = 0; i < occupied.Count; i++)
+        {
+            int weight = occupied[i];
+            numNodes[weight] = 0;
+            queue[weight] = null;
+        }
+        occupied.Clear();
+    }
+
+    void FindNewMin()
+    {
+        short[] numNodes = IntegerQueue.numNodes;
+        int currentMin = this.currentMin;
+        if (Count == 0)
+        {
+            return;
+        }
+        while (numNodes[currentMin] == 0)
+        {
+            currentMin++;
+        }
+        this.currentMin = currentMin;
+    }
+}
+
+struct Node : IComparable<Node>
+{
+    public readonly Coord value;
+    public readonly int weight;
+
+    public Node(Coord value, int weight)
+    {
+        this.value = value;
+        this.weight = weight;
+    }
+
+    public int CompareTo(Node other)
+    {
+        return weight.CompareTo(other.weight);
+    }
+}
+struct Coord : IEquatable<Coord>
+{
+    public readonly short x;
+    public readonly byte y;
+
+    public Coord(int x, int y)
+    {
+        this.x = (short)x;
+        this.y = (byte)y;
+    }
+
+    public override int GetHashCode()
+    {
+        return (x << 8) ^ y;
+    }
+
+    public static bool operator ==(Coord a, Coord b)
+    {
+        return a.x == b.x && a.y == b.y;
+    }
+
+    public static bool operator !=(Coord a, Coord b)
+    {
+        return a.x != b.x || a.y != b.y;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is Coord)
+        {
+            Coord other = (Coord)obj;
+            return Equals(other);
+        }
+        return false;
+    }
+
+    public bool Equals(Coord other)
+    {
+        return x == other.x && y == other.y;
+    }
+
+    public override string ToString()
+    {
+        return "x: " + x + ", y: " + y;
+    }
+}
+public class PriorityQueue<T> where T : IComparable<T>
+{
+    private List<T> data;
+
+    public PriorityQueue()
+    {
+        data = new List<T>();
+    }
+
+    public void Enqueue(T item)
+    {
+        data.Add(item);
+        int itemIndex = data.Count - 1;
+        while (IsItemOutOfPlace(itemIndex))
+        {
+            int parentIndex = GetParentIndex(itemIndex);
+            SwapAtIndices(itemIndex, parentIndex);
+            itemIndex = parentIndex;
+        }
+    }
+
+    public T Dequeue()
+    {
+        if (data.Count == 0)
+            throw new System.InvalidOperationException("Can't dequeue an empty queue!");
+
+        int lastIndex = data.Count - 1;
+        T frontItem = data[0];
+        data[0] = data[lastIndex];
+        data.RemoveAt(lastIndex);
+        lastIndex--;
+        int itemIndex = 0;
+        while (GetLeftChildIndex(itemIndex) <= lastIndex)
+        {
+            int childIndex = GetSmallestChildIndex(itemIndex);
+            if (IsCorrectOrder(childIndex, itemIndex))
+                break;
+            SwapAtIndices(childIndex, itemIndex);
+            itemIndex = childIndex;
+        }
+        return frontItem;
+    }
+
+    public int Count { get { return data.Count; } }
+
+    public T Peek()
+    {
+        if (data.Count == 0)
+            throw new InvalidOperationException("Can't peek into an empty queue!");
+        return data[0];
+    }
+
+    // Assumes parent index has at least one child.
+    int GetSmallestChildIndex(int parentIndex)
+    {
+        int leftIndex = GetLeftChildIndex(parentIndex);
+        int rightIndex = leftIndex + 1;
+        if (rightIndex < data.Count && data[rightIndex].CompareTo(data[leftIndex]) < 0)
+        {
+            return rightIndex;
+        }
+        else
+        {
+            return leftIndex;
+        }
+    }
+
+    int GetLeftChildIndex(int itemIndex)
+    {
+        return itemIndex * 2 + 1;
+    }
+
+    void SwapAtIndices(int indexOne, int indexTwo)
+    {
+        T temp = data[indexOne];
+        data[indexOne] = data[indexTwo];
+        data[indexTwo] = temp;
+    }
+
+    // Gets the index of the parent of the passed in index, or returns -1 if root is passed in.
+    int GetParentIndex(int itemIndex)
+    {
+        return (itemIndex - 1) / 2;
+    }
+
+    bool IsItemOutOfPlace(int itemIndex)
+    {
+        int parentIndex = GetParentIndex(itemIndex);
+        return itemIndex > 0 && !IsCorrectOrder(itemIndex, parentIndex);
+    }
+
+    bool IsCorrectOrder(int childIndex, int parentIndex)
+    {
+        return data[childIndex].CompareTo(data[parentIndex]) >= 0;
+    }
+}
