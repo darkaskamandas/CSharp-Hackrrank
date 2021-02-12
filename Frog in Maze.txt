@@ -1,0 +1,89 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+
+    static void Main(String[] args) {
+        string[] tokens_n = Console.ReadLine().Split(' ');
+        int n = Convert.ToInt32(tokens_n[0]);
+        int m = Convert.ToInt32(tokens_n[1]);
+        int k = Convert.ToInt32(tokens_n[2]);
+        double[,] p = new double[n,m];
+        char[,] maze = new char[n,m];
+        int[,] ti = new int[n,m];
+        int[,] tj = new int[n,m];
+        int si = 0;
+        int sj = 0;
+        for(int a0 = 0; a0 < n; a0++){
+            string row = Console.ReadLine();
+            // Write Your Code Here
+            for(int j = 0; j < row.Length; j++) {
+                maze[a0, j] = row[j];
+                if (row[j] == '%') {
+                    p[a0, j] = 1.0;
+                } else {
+                    p[a0, j] = 0.0;
+                }
+                if (row[j] == 'A') {
+                    si = a0;
+                    sj = j;
+                    maze[a0, j] = 'O';
+                }
+            }
+        }
+        for(int a0 = 0; a0 < k; a0++){
+            string[] tokens_i1 = Console.ReadLine().Split(' ');
+            int i1 = Convert.ToInt32(tokens_i1[0])-1;
+            int j1 = Convert.ToInt32(tokens_i1[1])-1;
+            int i2 = Convert.ToInt32(tokens_i1[2])-1;
+            int j2 = Convert.ToInt32(tokens_i1[3])-1;
+            // Write Your Code Here
+            maze[i1,j1] = 'T';
+            maze[i2,j2] = 'T';
+            ti[i1,j1] = i2;
+            ti[i2,j2] = i1;
+            tj[i1,j1] = j2;
+            tj[i2,j2] = j1;
+            
+        }
+       
+        // Write Your Code Here
+        while (true) {
+            double maxDelta = 0;
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < m; j++) {
+                    if (maze[i,j] == '*' || maze[i,j] == '#' || maze[i,j] == '%') continue;
+                    double np = 0;
+                    int nextn = 0;
+                    for (int di = -1; di <= 1; di++) {
+                        for (int dj = -1; dj <= 1; dj++) {
+                            if (di != 0 && dj != 0 || di == 0 && dj == 0) continue;
+                            int oi = i + di;
+                            int oj = j + dj;
+                            if ((oi < 0) || (oi >= n) || (oj < 0) || (oj >= m) || (maze[oi, oj] == '#')) {
+                                // Obstacle do nothing.
+                            } else if (maze[oi, oj] == 'T') {
+                                np += p[ti[oi,oj],tj[oi,oj]];
+                                nextn++;                                        
+                            } else {
+                                np += p[oi, oj];
+                                nextn++;
+                            }
+                        }
+                    }
+                    
+                    if (nextn > 0) {
+                        np /= nextn;
+                        maxDelta = Math.Max(maxDelta, Math.Abs(np - p[i,j]));
+                        p[i,j] = np;
+                    }
+                }
+            }
+            
+            if (maxDelta < 1e-12) break;
+        }
+        
+        Console.Write(p[si,sj]);
+    }
+}

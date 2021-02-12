@@ -1,0 +1,129 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    public struct Rotation
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public int XEnd { get; set; }
+        public int YEnd { get; set; }
+
+        public int XOff { get; set; }
+        public int YOff { get; set; }
+
+        public int DX { get; set; }
+        public int DY { get; set; }
+
+        public Rotation(int y, int x, int d, int dy, int dx)
+        {
+            X = x;
+            Y = y;
+
+            XEnd = x + d;
+            YEnd = y + d;
+
+            YOff = y - x;
+            XOff = y + x + d;
+
+            DY = YOff + dx;
+            DX = XOff - dy;
+        }
+    }
+
+    public struct Point
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public Point(int y, int x)
+        {
+            X = x;
+            Y = y;
+        }
+        public override string ToString()
+        {
+            return string.Format("{0} {1}", Y, X);
+        }
+    }
+    static void Main(String[] args)
+    {        
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        int n = int.Parse(Console.ReadLine());
+
+        int rotationsCount = int.Parse(Console.ReadLine());
+        Rotation[] rotations = new Rotation[rotationsCount];
+        for (int r = 0; r < rotationsCount; r++)
+        {
+            int[] rotation = Console.ReadLine().Split(' ').Select(i => int.Parse(i)).ToArray();
+            if (r == 0)
+            {
+                rotations[r] = new Rotation(rotation[0] - 1, rotation[1] - 1, rotation[2], 0, 0);
+            }
+            else
+            {
+                rotations[r] = new Rotation(rotation[0] - 1, rotation[1] - 1, rotation[2], rotations[r - 1].DY, rotations[r - 1].DX);
+            }
+        }
+
+
+
+        int knightsCount = int.Parse(Console.ReadLine());
+        for (int k = 0; k < knightsCount; k++)
+        {
+            long knightPosition = long.Parse(Console.ReadLine());                
+            var position = new Point((int)(knightPosition / n), (int)(knightPosition % n));
+
+            position = FindRotationIndex(position, rotations);
+
+            Console.WriteLine("{0} {1}", position.Y + 1, position.X + 1);
+        }
+
+    }
+
+    private static Point FindRotationIndex(Point position, Rotation[] rotations)
+    {
+        int low = 0, high = rotations.Length; // numElems is the size of the array i.e arr.size() 
+        while (low != high)
+        {
+            int mid = (low + high) / 2; // Or a fancy way to avoid int overflow
+
+            var rotation = rotations[mid];
+            var newPosition = Rotate(position, rotation, mid + 1);
+            if (newPosition.Y >= rotation.Y && newPosition.Y <= rotation.YEnd &&
+                newPosition.X >= rotation.X && newPosition.X <= rotation.XEnd)
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+
+        return (low == 0) ? position: Rotate(position, rotations[low - 1], low);        
+    }
+   
+    private static Point Rotate(Point initialPoint, Rotation rotation, int rotationIndex)
+    {
+
+        if (rotationIndex % 4 == 0)
+        {
+            return new Point(rotation.DY + initialPoint.Y, rotation.DX + initialPoint.X);
+        }
+        else if (rotationIndex % 2 == 0)
+        {
+            return new Point(rotation.DY - initialPoint.Y, rotation.DX - initialPoint.X);
+        }
+        else if ((rotationIndex + 1) % 4 == 0)
+        {
+            return new Point(rotation.DY - initialPoint.X, rotation.DX + initialPoint.Y);
+        }
+        else
+        {
+            return new Point(rotation.DY + initialPoint.X, rotation.DX - initialPoint.Y);
+        }
+    }
+}
