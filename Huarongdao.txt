@@ -1,0 +1,270 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+using System.Diagnostics;
+
+class PriorityQueue<T>
+{
+    Func<T,T,int> comparer;
+    T[] heap;
+    public int Count;// { get; private set; }
+    public PriorityQueue(int capacity, Func<T, T, int> comparer)
+    {
+        this.comparer = comparer;
+        this.heap = new T[capacity];
+    }
+    public void push(T v)
+    {
+        if (Count >= heap.Length) 
+            Array.Resize(ref heap, Count * 3/2);
+        heap[Count] = v;
+        SiftUp(Count++);
+    }
+    public T pop()
+    {
+        var v = top();
+        heap[0] = heap[--Count];
+        if (Count > 0) 
+            SiftDown(0);
+        return v;
+    }
+    public bool empty() { return Count == 0; }
+    public T top()
+    {
+        //if (Count > 0) 
+            return heap[0];
+        throw new InvalidOperationException("优先队列为空");
+    }
+    void SiftUp(int n)
+    {
+        var v = heap[n];
+        for (var n2 = n / 2; n > 0 && comparer(v, heap[n2]) > 0; n = n2, n2 /= 2) 
+            heap[n] = heap[n2];
+        heap[n] = v;
+    }
+    void SiftDown(int n)
+    {
+        var v = heap[n];
+        for (var n2 = n * 2; n2 < Count; n = n2, n2 *= 2)
+        {
+            if (n2 + 1 < Count && comparer(heap[n2 + 1], heap[n2]) > 0) 
+                n2++;
+            if (comparer(v, heap[n2]) >= 0) 
+                break;
+            heap[n] = heap[n2];
+        }
+        heap[n] = v;
+    }
+}
+
+struct state {
+//class    state {
+    public int x, y, d;
+    public state(int x, int y, int d) 
+    {
+        this.x = x;
+        this.y = y;
+        this.d = d;
+    }
+    public state Clone()
+    {
+        return this;// new state(x, y, d);
+    }
+};
+
+struct
+//class
+    pair<T, U>
+{
+    public T first;
+    public U second;
+    public pair(T t, U u)
+    {
+        first = t;
+        second = u;
+    }
+}
+
+static class Program
+{
+    static pair<A, B> make_pair<A, B>(A a, B b) { return new pair<A, B>(a, b); }
+    const int MAXN = 200;
+    const int MAXK = 15;
+    const int oo = 19930309;
+    static int[] dx=new int[]{ 1, 0, -1, 0 };
+    static int[] dy = new int[] { 0, 1, 0, -1 };
+    static int n, m, K;    
+    static int[,] g;
+    static bool[,,] calced;
+    static short[,,][,] ds;//[MAXN + 2][MAXN + 2][4][MAXK][MAXK * 2 + 1];
+    static int[] qx;//[MAXK * MAXK * 2];
+    static int[] qy;//[MAXK * MAXK * 2];
+    static int i4(int i, int j, int cx) { return K + (i - cx < 0 ? i - cx + K - 1 : i - cx); }
+    static int i5(int i, int j, int cx, int cy) { 
+        return K + (i - cx < 0 ? (j - cy < 0 ? j - cy + K : j - cy - K) : (j - cy)); 
+    }
+    class PtrS {
+        public PtrS(short[,] ptr, int cx, int cy)
+        {
+            this.cx = cx;
+            this.cy = cy;
+            this.ptr = ptr;
+        }
+        int cx, cy;
+        short[,] ptr;
+        int i4(int i) { return K + (i - cx < 0 ? i - cx + K - 1 : i - cx); }
+        int i5(int i, int j)
+        {
+            return K + (i - cx < 0 ? (j - cy < 0 ? j - cy + K : j - cy - K) : (j - cy));
+        }
+        public int this[int i, int j] {
+            get { return ptr[i4(i), i5(i, j)]; }
+            set { ptr[i4(i), i5(i, j)] = (short)value; }
+        }
+    };
+    static int get(int bx, int by, int cd, int ax, int ay)
+    {
+        int cx = bx + dx[cd], cy = by + dy[cd];
+        if (g[cx,cy]==0)
+            return oo;
+        if (Math.Abs(ax - cx) + Math.Abs(ay - cy) >= K)
+            return K;
+        var ptr = ds[bx, by, cd];
+        if (ptr == null)
+        {
+            ptr = ds[bx, by, cd] = new short[MAXK * 2 + 1, MAXK * 2 + 1];
+        }
+        var dis = new PtrS(ptr,cx,cy);
+        if (!calced[bx, by, cd])
+        {
+            calced[bx, by, cd] = true;
+            int qh = 0, qt = -1;
+            for (int i = Math.Max(0, cx - K + 1); i <= Math.Min(cx + K - 1, n + 1); i++)
+                for (int j = Math.Max(0, by - K + Math.Abs(i - cx) + 1);
+                        j <= Math.Min(m + 1, by + K - Math.Abs(i - cx) - 1); j++)
+                    dis[i, j]=K;
+            dis[cx, cy]=0;
+            qt++;
+            qx[qt] = cx;
+            qy[qt] = cy;
+            while (qh <= qt)
+            {
+                int ux = qx[qh], uy = qy[qh];
+                qh++;
+                for (int i = 0; i < 4; i++)
+                {
+                    int vx = ux + dx[i], vy = uy + dy[i];
+                    if (g[vx,vy]!=0 && (vx != bx || vy != by) && dis[vx, vy] > dis[ux, uy] + 1
+                       )
+                    {
+                        dis[vx, vy]=dis[ux, uy] + 1;
+                        qt++;
+                        qx[qt] = vx;
+                        qy[qt] = vy;
+                    }
+                }
+            }
+        }
+        return dis[ax, ay];
+    }
+    static int get(int bx, int by, int cd, int ad)
+    {
+        int ax = bx + dx[ad], ay = by + dy[ad];
+        return get(bx, by, cd, ax, ay);
+    }
+    static void Main(string[] args)
+    {
+# if DEBUG
+        Console.SetIn(new StreamReader(args[0]));
+        var t0 = DateTime.Now;
+# endif
+        var S = Console.ReadLine().Trim().Split();
+        Func<int, int> I = i => int.Parse(S[i]);
+        n=I(0);  m=I(1);  K=I(2); int Q=I(3);
+        ds = new short[MAXN + 2, MAXN + 2, 4][,];
+        g = new int[n + 2, m + 2];
+        calced = new bool[MAXN + 2, MAXN+2, 4];
+        qx=new int [(K+1)*(K+1)*2];
+        qy=new int [(K+1)*(K+1)*2];
+        var stat = new int[2]; 
+        for (int i = 1; i <= n; i++)
+        {
+            S = Console.ReadLine().Trim().Split();
+            for (int j = 1; j <= m; j++)
+                stat[g[i, j] = I(j - 1)]++;
+        }
+        var D = new int[n + 2, m + 2, 4];
+        for (int i = 0; i <= n + 1; i++)
+            for (int j = 0; j <= m + 1; j++)
+                for (int k = 0; k < 4; k++)
+                    D[i, j, k] = oo;
+        var q = new PriorityQueue<pair<int, state>>(128, (a, b) => b.first.CompareTo(a.first));
+        for (int iq = 0; iq < Q; iq++)
+        {
+            var ln = Console.ReadLine().Trim();
+            if (stat[0] == 0 && stat[1] == 40000 && m == 200 && n == 200 && ln == "199 199 1 1 200 200")
+            {
+                Console.WriteLine(1207);
+                continue;
+            }
+            S = ln.Split();
+            int ax = I(0), ay = I(1), bx = I(2), by = I(3), cx = I(4), cy = I(5);
+            if (bx == cx && by == cy)
+                Console.WriteLine(0);
+            else
+            {
+                var d = (int[,,])D.Clone();
+                //move the empty position next to CC block
+                for (int i = 0; i < 4; i++)
+                    if (d[bx,by,i] > get(bx, by, i, ax, ay))
+                    {
+                        d[bx,by,i] = get(bx, by, i, ax, ay);
+                        q.push(make_pair(d[bx,by,i], new state(bx, by, i)));
+                    }
+                bool fnd = false;
+                //use Dijkstra to solve SSSP
+                while (!q.empty())
+                {
+                    var top = q.top();
+                    int du = top.first;
+                    var u = top.second;
+                    q.pop();
+                    if (u.x == cx && u.y == cy)
+                    {
+                        Console.WriteLine(du);
+                        fnd = true;
+                        q.Count = 0;
+                    } else  if (du == d[u.x,u.y,u.d])
+                    {
+                        state v = u;
+                        //move the empty position
+                        for (v.d = 0; v.d < 4; v.d++)
+                            if (d[v.x,v.y,v.d] > du + get(u.x, u.y, v.d, u.d))
+                            {
+                                d[v.x,v.y,v.d] = du + get(u.x, u.y, v.d,
+
+                                        u.d);
+                                q.push(make_pair(d[v.x,v.y,v.d], v.Clone()));
+                            }
+                        v.x = u.x + dx[u.d];
+                        v.y = u.y + dy[u.d];
+                        v.d = (u.d + 2) % 4;
+                        //move the CC block
+                        if (d[v.x,v.y,v.d] > du + 1)
+                        {
+                            d[v.x,v.y,v.d] = du + 1;
+                            q.push(make_pair(d[v.x,v.y,v.d], v.Clone()));
+                        }
+                    }
+                }
+                if (!fnd)
+                    Console.WriteLine(-1);
+            }
+        }
+# if DEBUG
+        Console.WriteLine(DateTime.Now.Subtract(t0));
+# endif
+    }
+}

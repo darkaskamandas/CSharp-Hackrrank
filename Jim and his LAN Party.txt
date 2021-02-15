@@ -1,0 +1,255 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace HackerRank_CSharp
+{
+    class JimLanParty
+    {
+        class Node
+        {
+            public int game;
+            public List<Node> connections = new List<Node>();
+            public int ID;
+        }
+
+        class Graph
+        {
+            public int[] group_size_for_game;
+            public Dictionary<int, Node> nodes = new Dictionary<int, Node>();
+
+            public Graph()
+            {
+            }
+        }
+
+        Graph g = new Graph();
+
+        class DFSState
+        {
+            public Dictionary<int, bool> node_visited = new Dictionary<int, bool>();
+            public Dictionary<int, int> games_visited = new Dictionary<int, int>();
+            public List<int> games_connected = new List<int>();
+            public Dictionary<int, bool> terminating_nodes = new Dictionary<int, bool>();
+        }
+
+        DFSState MergeDFS(ref DFSState s1, ref DFSState s2)
+        {
+            DFSState output = new DFSState();
+
+            // Merge all the lists for both the states
+            foreach (var key_val in s1.node_visited)
+                output.node_visited[key_val.Key] = key_val.Value;
+
+            foreach (var key_val in s2.node_visited)
+                output.node_visited[key_val.Key] = key_val.Value;
+
+            foreach (var key_val in s1.games_visited)
+                output.games_visited[key_val.Key] = key_val.Value;
+
+            // Games visited needs to be accumulated
+            foreach (var key_val in s2.games_visited)
+                if (output.games_visited.ContainsKey(key_val.Key))
+                    output.games_visited[key_val.Key] += key_val.Value;
+                else
+                    output.games_visited[key_val.Key] = key_val.Value;
+
+            foreach (var key_val in s1.terminating_nodes)
+                output.terminating_nodes[key_val.Key] = key_val.Value;
+
+            foreach (var key_val in s2.terminating_nodes)
+                output.terminating_nodes[key_val.Key] = key_val.Value;
+
+            foreach (var item in s1.games_connected)
+                output.games_connected.Add(item);
+
+            foreach (var item in s2.games_connected)
+                output.games_connected.Add(item);
+
+            return output;
+        }
+
+        bool DFS_Recursive(Node node, ref DFSState dfs_state)
+        {
+            if (!dfs_state.node_visited.ContainsKey(node.ID))
+            {
+                if (dfs_state.games_visited.ContainsKey(node.game))
+                    ++dfs_state.games_visited[node.game];
+                else
+                    dfs_state.games_visited[node.game] = 1;
+
+                if (dfs_state.games_visited[node.game] == g.group_size_for_game[node.game] &&
+                    g.group_size_for_game[node.game] > 1)
+                    dfs_state.games_connected.Add(node.game);
+            }
+
+            dfs_state.node_visited[node.ID] = true;
+
+            bool res = false;
+            bool visited_atleast_one = false;
+            foreach (Node n in node.connections)
+            {
+                if (!dfs_state.node_visited.ContainsKey(n.ID))
+                {
+                    res |= DFS_Recursive(n, ref dfs_state);
+                    visited_atleast_one = true;
+                }
+            }
+
+            if (!visited_atleast_one)
+                dfs_state.terminating_nodes[node.ID] = true;
+
+            return res;
+        }
+
+        void perform_action(Node node, ref DFSState dfs_state)
+        {
+            if (!dfs_state.node_visited.ContainsKey(node.ID))
+            {
+                if (dfs_state.games_visited.ContainsKey(node.game))
+                    ++dfs_state.games_visited[node.game];
+                else
+                    dfs_state.games_visited[node.game] = 1;
+
+                if (dfs_state.games_visited[node.game] == g.group_size_for_game[node.game] &&
+                    g.group_size_for_game[node.game] > 1)
+                    dfs_state.games_connected.Add(node.game);
+            }
+
+            dfs_state.node_visited[node.ID] = true;
+        }
+
+        void DFS_Iterative(Node node, ref DFSState dfs_state)
+        {
+            Stack<Node> dfs_stack = new Stack<Node>();
+            dfs_stack.Push(node);
+
+            while (dfs_stack.Count() > 0)
+            {
+                Node top = dfs_stack.Pop();
+                perform_action(top, ref dfs_state);
+
+                bool visited_atleast_one = false;
+                foreach (Node n in node.connections)
+                {
+                    if (!dfs_state.node_visited.ContainsKey(n.ID))
+                    {
+                        dfs_stack.Push(n);
+                        visited_atleast_one = true;
+                    }
+                }
+
+                if (!visited_atleast_one)
+                    dfs_state.terminating_nodes[node.ID] = true;
+            }
+        }
+
+        void ReadInput()
+        {
+            string[] inputs = Console.ReadLine().Split(' ');
+            int N = Convert.ToInt32(inputs[0]);
+            int M = Convert.ToInt32(inputs[1]);
+            int Q = Convert.ToInt32(inputs[2]);
+
+            for (int i = 1; i <= N; ++i)
+            {
+                Node node = new Node();
+                node.ID = i;
+                g.nodes[i] = node;
+            }
+
+            g.group_size_for_game = new int[M + 1];
+
+            string[] games = Console.ReadLine().Split(' ');
+
+            for (int i = 1; i <= games.Length; ++i )
+            {
+                g.nodes[i].game = Convert.ToInt32(games[i-1]);
+                g.group_size_for_game[g.nodes[i].game]++;
+            }
+
+            Dictionary<int, int> connections_which_enabled_group = new Dictionary<int, int>();
+            List<DFSState> dfs_states = new List<DFSState>();
+
+            for (int i = 0; i < Q; ++i)
+            {
+                string[] connections = Console.ReadLine().Split(' ');
+                int start = Convert.ToInt32(connections[0]);
+                if (start == 50001)
+                {
+                    int a = 10;
+                }
+
+                int end = Convert.ToInt32(connections[1]);
+                g.nodes[start].connections.Add(g.nodes[end]);
+                g.nodes[end].connections.Add(g.nodes[start]);
+
+                DFSState dfs_state_to_use = null;
+                DFSState start_dfs_state = null;
+                DFSState end_dfs_state = null;
+                foreach (DFSState dfs_state in dfs_states)
+                {
+                    if (dfs_state.node_visited.ContainsKey(start))
+                        start_dfs_state = dfs_state;
+                    else if (dfs_state.node_visited.ContainsKey(end))
+                        end_dfs_state = dfs_state;
+                }
+
+                if (start_dfs_state != null && end_dfs_state == null)
+                    dfs_state_to_use = start_dfs_state;
+                else if (start_dfs_state == null && end_dfs_state != null)
+                    dfs_state_to_use = end_dfs_state;
+                else if (start_dfs_state != null && end_dfs_state != null)
+                {
+                    DFSState merged_dfs_state = MergeDFS(ref start_dfs_state, ref end_dfs_state);
+                    dfs_states.Remove(start_dfs_state);
+                    dfs_states.Remove(end_dfs_state);
+                    dfs_states.Add(merged_dfs_state);
+                    dfs_state_to_use = merged_dfs_state;
+
+                    // Loop through all the nodes and see if we have already satisfied the criteria
+                    for (int game = 1; game <= M; ++game)
+                    {
+                        if (merged_dfs_state.games_visited.ContainsKey(game) &&
+                            merged_dfs_state.games_visited[game] == g.group_size_for_game[game] &&
+                            g.group_size_for_game[game] > 1)
+                            merged_dfs_state.games_connected.Add(game);
+                    }
+                }
+
+                if (dfs_state_to_use == null)
+                {
+                    dfs_state_to_use = new DFSState();
+                    dfs_states.Add(dfs_state_to_use);
+                }
+
+                // Crashes with input06.txt
+                // DFS_Recursive(g.nodes[start], ref dfs_state_to_use);
+                DFS_Iterative(g.nodes[start], ref dfs_state_to_use);
+
+                foreach (int game in dfs_state_to_use.games_connected)
+                    if (!connections_which_enabled_group.ContainsKey(game))
+                        connections_which_enabled_group[game] = i;
+            }
+
+            for (int i = 1; i <= M; ++i)
+            {
+                int connection = -1;
+                if (connections_which_enabled_group.ContainsKey(i))
+                    connection = connections_which_enabled_group[i] + 1;
+                else if (g.group_size_for_game[i] == 1)
+                    connection = 0;
+
+                Console.WriteLine(connection);
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            JimLanParty jimLanPartyProblem = new JimLanParty();
+            jimLanPartyProblem.ReadInput();
+        }
+    }
+}

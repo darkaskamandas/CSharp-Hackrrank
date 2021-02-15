@@ -1,0 +1,267 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    static void Main(String[] args) {
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        TrainingTheArmy.Start();
+    }
+}
+public class TrainingTheArmy
+    {
+
+        const int MAXSKILLSETS = 50 * 30 * 2 + 200 * 30 + 10;
+
+        const int MAXW = 50 + 2;
+        const int INF = 1 << 30;
+        public class Kingdom
+        {
+            public Kingdom()
+            {
+                for (int i = 0; i < MAXSKILLSETS; i++)
+                    adjacent.Add(new List<Matrix>());
+            }
+            public class Matrix
+            {
+                public Matrix(int v, int u, int l)
+                {
+                    vertexV = v;
+                    vertexU = u;
+                    length = l;
+                }
+                private int vertexV;
+
+                public int VertexV
+                {
+                    get { return vertexV; }
+                    set { vertexV = value; }
+                }
+                private int vertexU;
+
+                public int VertexU
+                {
+                    get { return vertexU; }
+                    set { vertexU = value; }
+                }
+
+                private int length;
+
+                public int Length
+                {
+                    get { return length; }
+                    set { length = value; }
+                }
+
+                public Matrix() { }
+            }
+            int i, n, flowStart, flowEnd;
+            int[] height = new int[MAXSKILLSETS], 
+                count = new int[MAXSKILLSETS];
+            List<List<Matrix>> adjacent = new List<List<Matrix>>(MAXSKILLSETS);
+
+            public void Clear()
+            {
+                for (i = 0; i < n; ++i)
+                    adjacent[i].Clear();
+                n = 0;
+            }
+            public void Add(int u, int v, int c, int d = 0)
+            {
+                n = Math.Max(n, Math.Max(u, v) + 1);
+                adjacent[u].Add(new Matrix(v, c, adjacent[v].Count()));
+                adjacent[v].Add(new Matrix(u, c * d, adjacent[u].Count() - 1));
+            }
+            public int GetMaximumFlow(int start, int end)
+            {
+                flowStart = start;
+                flowEnd = end;
+                for (int i = 0; i < height.Length; i++)
+                {
+                    height[i] = 0;
+                }
+                for (int i = 0; i < count.Length; i++)
+                {
+                    count[i] = 0;
+                }
+
+                int flow = 0;
+                while (height[flowStart] < n)
+                    flow += DepthFirstSearch(flowStart, INF);
+                return flow;
+            }
+            int DepthFirstSearch(int u, int flow)
+            {
+                if (u == flowEnd)
+                    return flow;
+                int minHeight = n - 1;
+                int count = 0;
+                foreach (var it in adjacent[u])
+                {
+                    if (flow != 0)
+                    {
+                        if (it.VertexU != 0)
+                        {
+                            if (height[it.VertexV] + 1 == height[u])
+                            {
+                                int k = DepthFirstSearch(it.VertexV, Math.Min(it.VertexU, flow));
+                                if (k != 0)
+                                {
+                                    it.VertexU -= k;
+                                    adjacent[it.VertexV][it.Length].VertexU += k;
+                                    flow -= k;
+                                    count += k;
+                                }
+                                if (height[flowStart] >= n)
+                                    return count;
+                            }
+                            minHeight = Math.Min(minHeight, height[it.VertexV]);
+                        }
+                    }
+                }
+
+                if (count != 0)
+                    return count;
+                if (--this.count[height[u]] == 0)
+                    height[flowStart] = n;
+                height[u] = minHeight + 1;
+                ++this.count[height[u]];
+                return 0;
+            }
+        }
+        public class Menu
+        {
+            List<int> firstList = new List<int>();
+            List<int> secondList = new List<int>();
+
+            public int FirstListLength { get; set; }
+            public int SecondListLength { get; set; }
+
+            public List<int> FirstList
+            {
+                get
+                {
+                    return firstList;
+                }
+                set
+                {
+                    firstList = value;
+                }
+            }
+            public List<int> SecondList
+            {
+                get
+                {
+                    return secondList;
+                }
+                set
+                {
+                    secondList = value;
+                }
+            }
+
+            public Menu() { }
+            public Menu(int i)
+            {
+            }
+
+            public void Digest()
+            {
+                string[] arr1 = Console.ReadLine().Split(' ');
+                firstList.Clear();
+                for (int j = 0; j < arr1.Length; j++)
+                {
+                    if (j == 0)
+                        FirstListLength = int.Parse(arr1[j]);
+                    else
+                        firstList.Add(int.Parse(arr1[j]) - 1);
+                }
+                string[] arr2 = Console.ReadLine().Split(' ');
+                secondList.Clear();
+
+                for (int j=0;j<arr2.Length;j++)
+                {
+                    if (j == 0)
+                        SecondListLength = int.Parse(arr2[j]);
+                    else
+                        secondList.Add(int.Parse(arr2[j]) - 1);
+                }
+            }
+        }
+        public static void Start()
+        {
+            byte[] inputBuffer = new byte[6144000];
+            Stream inputStream = Console.OpenStandardInput(inputBuffer.Length);
+            Console.SetIn(new StreamReader(inputStream, Console.InputEncoding, false, inputBuffer.Length));
+            string[] nt = Console.ReadLine().Split(' ');
+            int numSkills = int.Parse(nt[0]);
+            int numWizards = int.Parse(nt[1]);
+
+            string[] arr = Console.ReadLine().Split(' ');
+            int[] skills = Array.ConvertAll(arr, x => int.Parse(x));
+            Menu[] menus = new Menu[numWizards];
+            for (int i=0;i<numWizards;i++)
+            {
+                menus[i] = new Menu();
+                menus[i].Digest();
+            }
+
+            Console.WriteLine(MaxNumberDistinctSkillset(menus, numSkills, numWizards,skills));
+
+        }
+
+        private static int MaxNumberDistinctSkillset(
+    Menu[] menus,
+    int numberOfSkills, int numWizards, int[] skills)
+        {
+            Kingdom adj = new Kingdom();
+            int start = 0, end = 1;
+            for (int i = 0; i < numberOfSkills; i++)
+                for (int j = 0; j < numWizards; j++)
+                    adj.Add(GetLevelId(i, j, numberOfSkills),
+                        GetLevelId(i, j + 1, numberOfSkills), INF);
+
+            for (int i = 0; i < numberOfSkills; i++)
+            {
+                if (skills[i] != 0)
+                    adj.Add(start, GetLevelId(i, 0, numberOfSkills), skills[i]);
+                adj.Add(GetLevelId(i, numWizards, numberOfSkills), end, 1);
+            }
+
+            int vertices = GetLevelId(numberOfSkills - 1, numWizards, numberOfSkills) + 1;
+            Dictionary<int, int> inDegreeVertex = new Dictionary<int, int>(),
+                outDegreeVertex = new Dictionary<int, int>();
+
+            for (int i = 0; i < numWizards; i++)
+            {
+                for (int j = 0; j < menus[i].FirstListLength; j++)
+                {
+                    adj.Add(GetLevelId(menus[i].FirstList[j], i, numberOfSkills), vertices, 1);
+                    inDegreeVertex[menus[i].FirstList[j]] = vertices++;
+                }
+
+                for (int j = 0; j < menus[i].SecondListLength; j++)
+                {
+                    adj.Add(vertices, GetLevelId(menus[i].SecondList[j], i + 1, numberOfSkills), 1);
+                    outDegreeVertex[menus[i].SecondList[j]] = vertices++;
+
+                }
+
+                for (int j = 0; j < menus[i].FirstListLength; j++)
+                {
+                    for (int k = 0; k < menus[i].SecondListLength; k++)
+                    {
+                        adj.Add(inDegreeVertex[menus[i].FirstList[j]],
+                            outDegreeVertex[menus[i].SecondList[k]], 1);
+                    }
+                }
+
+            }
+            return adj.GetMaximumFlow(start, end);
+        }
+
+        static int GetLevelId(int x, int y, int n)
+        {
+            return y * n + x + 2;
+        }
+    }
