@@ -1,0 +1,415 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+
+namespace HackerRanking
+{
+    public class MaxSumIncreasingSubsequence
+    {
+        // Returns the maximum value of 
+        // the increasing subsequence 
+        // till that index 
+        // Link to understand getSum function 
+        public static int getSum(int[] BITree, int index)
+        {
+            int sum = 0;
+            while (index > 0)
+            {
+                sum = Math.Max(sum, BITree[index]);
+                index -= index & (-index);
+            }
+            return sum;
+        }
+
+        // Updates a node in Binary Index 
+        // Tree (BITree) at given index in 
+        // BITree. The max value is updated 
+        // by taking max  of 'val' and the 
+        // already present value in the node. 
+        public static void updateBIT(int[] BITree, int newIndex, int index, int val)
+        {
+            while (index <= newIndex)
+            {
+                BITree[index] = Math.Max(val, BITree[index]);
+                index += index & (-index);
+            }
+        }
+
+        // maxSumIS() returns the maximum 
+        // sum of increasing subsequence 
+        // in arr[] of size n 
+        public static int[] maxSumIS(int[] arr, int start = 0)
+        {
+            arr = arr.Select(x => Math.Max(0, x)).ToArray();
+            var uniqueArr = new Dictionary<int,int>();
+
+            // Inserting all values in map uniqueArr 
+            var newindex = 0;
+            foreach (var t in arr.GroupBy(a => a).Select(g => g.Key).OrderBy(x => x))
+            {
+                if(uniqueArr.ContainsKey(t))
+                    continue;
+                uniqueArr[t] = ++newindex;
+            }
+
+            // Constructing the BIT 
+            var BITree = new int[newindex + 1];
+
+            var vres = new int[arr.Length];
+            for (int i = start; i < arr.Length; i++)
+            {
+                // Finding maximum sum till this element 
+                var max_sum = getSum(BITree, uniqueArr[arr[i]] - 1);
+                // Updating the BIT  with new maximum sum
+
+                updateBIT(BITree, newindex,uniqueArr[arr[i]], max_sum + arr[i]);
+                if (i > 0)
+                    vres[i] = Math.Max(vres[i - 1], max_sum + arr[i]);
+                else
+                    vres[i] = arr[i];
+            }
+
+            // return maximum sum 
+            //return getSum(BITree, newindex);
+            return vres;
+        }
+
+    }
+
+    public class MaxSumIncreasingSubSequence
+    {
+        public static int getSum(int[] BITree, int index)
+        {
+            int sum = 0;
+            while (index > 0)
+            {
+                sum = Math.Max(sum, BITree[index]);
+                index -= index & (-index);
+            }
+            return sum;
+        }
+
+        public static void updateBIT(int[] BITree, int newIndex, int index, int val)
+        {
+            while (index <= newIndex)
+            {
+                BITree[index] = Math.Max(val, BITree[index]);
+                index += index & (-index);
+            }
+        }
+
+        private Dictionary<int, int> uniqueArr;
+        private int newindex = 0;
+        private int[] data;
+
+        public MaxSumIncreasingSubSequence(int[] data)
+        {
+            this.data = data;//.Select(x => Math.Max(0, x)).ToArray();
+            uniqueArr = new Dictionary<int, int>();
+
+            // Inserting all values in map uniqueArr
+            newindex = 0;
+            foreach (var t in this.data.GroupBy(a => a).Select(g => g.Key).OrderBy(x => x))
+            {
+                if (uniqueArr.ContainsKey(t))
+                    continue;
+                uniqueArr[t] = ++newindex;
+            }
+        }
+
+        public IEnumerable<int> maxSumIS(int start = 0)
+        {
+            // Constructing the BIT 
+            var BITree = new int[newindex + 1];
+
+            var vres = int.MinValue;
+            for (int i = start; i < data.Length; i++)
+            {
+                // Finding maximum sum till this element 
+                var max_sum = getSum(BITree, uniqueArr[data[i]] - 1);
+                // Updating the BIT  with new maximum sum
+                updateBIT(BITree, newindex, uniqueArr[data[i]], max_sum + data[i]);
+                if (i > 0)
+                    vres = Math.Max(vres, max_sum + data[i]);
+                else
+                    vres = data[i];
+                yield return vres;
+            }
+        }
+
+
+    }
+
+
+    internal class SolutionTwoSubarrays
+    {
+        public static int lower_bound(IList<int> seg, int value)
+        {
+            var count = seg.Count;
+            int first = 0;
+            while (count > 0)
+            {
+                var it = first;
+                var step = count / 2;
+                it += step;
+                if (seg[it] < value)
+                {
+                    first = ++it;
+                    count -= step + 1;
+                }
+                else
+                    count = step;
+            }
+            return first;
+        }
+
+
+        static int[] nextLargerIdx(int[] v)
+        {
+            var k = 0;
+            var sorted = v.Select(e => new {e, idx = k++})
+                .OrderBy(t => t.e)
+                .ToList();
+            var vres = new int[v.Length];
+            for (int i = 0; i < v.Length - 1; i++)
+                vres[sorted[i].idx] = sorted[i + 1].idx;
+            vres[sorted[v.Length - 1].idx] = -1;
+            return vres;
+        }
+
+        static int[] nextIncreasingIndex(int[] v)
+        {
+            var vres = new List<int>();
+            vres.Add(0);
+            for (int i = 1; i < v.Length; i++)
+            {
+                if (v[i] > v[i - 1])
+                    vres.Add(i);
+            }
+            vres.Add(v.Length-1);
+            return vres.ToArray();
+        }
+
+        /// <summary>
+        /// returns high level watermarks
+        /// </summary>
+        /// <param name="arr"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns>high level watermark array , each element at index k represents max sum of some subsequence between start and k</returns>
+        static int[] maxSumIncSequence(int[] arr, int start = 0, int end = -1)
+        {
+            if (end < 0)
+                end = arr.Length;
+            int len = end - start;
+            int i;
+            int j;
+            var msis = new int[end-start];
+
+            /* Initialize msis values  
+            for all indexes */
+            for (i = 0; i < len; i++)
+                msis[i] = arr[start+i];
+
+            /* Compute maximum sum values  
+            in bottom up manner */
+            for (i = 1; i < len; i++)
+                for (j = 0; j < i; j++)
+                    if (arr[start + i] > arr[start + j] && msis[i] < msis[j] + arr[start + i])
+                        msis[i] = msis[j] + arr[start + i];
+            
+            /* Pick maximum of  
+            all msis values */
+            for (i = 1; i < len; i++)
+                if (msis[i-1] > msis[i])
+                    msis[i] = msis[i-1];
+
+            return msis;
+        }
+
+        public static int[] integrate(int[] v)
+        {
+            var vres = new int[v.Length + 1];
+            for (int i = 0; i < v.Length; i++)
+                vres[i + 1] = vres[i] + v[i];
+            return vres;
+        }
+
+        public static int g(int l, int r, int[] vagg, int[] vmax)
+        {
+            int max = 0;
+            for (int i = 0; i < vmax.Length; i++)
+                max = Math.Max(vagg[r] - vagg[l] - vmax[r], max);
+            return max;
+        }
+
+        private static void Main(String[] args)
+        {
+            //RangeSum.Test();
+            /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+            TextReader reader = null;
+            try
+            {
+
+                reader = File.OpenText(@"c:\temp\input08-TwoSubarrays.txt"); //499999 1
+                reader = File.OpenText(@"c:\temp\input04-TwoSubarrays.txt"); //979 3
+
+                reader = File.OpenText(@"c:\temp\input13-TwoSubarrays.txt"); //118720 14
+                reader = File.OpenText(@"c:\temp\input10-TwoSubarrays.txt"); //6253764 1
+                reader = new StringReader(@"3
+2 3 1");
+            }
+            catch
+            {
+                reader = Console.In;
+            }
+
+            if (reader == null)
+                return;
+
+
+            var n = Int32.Parse(reader.ReadLine());
+            var data = reader.ReadLine().Split(' ')
+                .Select(Int32.Parse )
+                .ToArray();
+
+            //var max = solve(data, out var cnt);
+            if (data.Length > 10000)
+            {
+                var tuple = GetMax(data);
+                Console.WriteLine("{0} {1}", tuple.Item1, tuple.Item2);
+            }
+            else
+            {
+                var max = solve(data, out var cnt);
+                Console.WriteLine("{0} {1}", max, cnt);
+            }
+
+            //Trace.WriteLine(String.Format("{0} {1}", max, cnt));
+            //SubArrayNode.solve(data);119256 14
+        }
+
+             static Tuple<int, int, int> GetMax(int[] data)
+        {
+            var res = 0;
+            var maxg = data[0];
+            int l = 0;
+            int maxcnt = 0;
+            var maxc = data[0];
+            var mm = int.MaxValue;
+            var maxinc = new MaxSumIncreasingSubSequence(data);
+
+            var ienum = maxinc.maxSumIS().GetEnumerator();
+            ienum.MoveNext();
+            res = maxc - ienum.Current;
+            Debug.Assert(res == 0);
+
+            for (int i = 1; i < data.Length; i++)
+            {
+                if (data[i] > maxc + data[i])
+                {
+                    l = i;
+                    ienum = maxinc.maxSumIS(l).GetEnumerator();
+                }
+
+                maxc = Math.Max(data[i], maxc + data[i]);
+                if (maxc > maxg)
+                    maxg = maxc;
+
+                ienum.MoveNext();
+                var maxagg = ienum.Current;
+                var mres = maxc - maxagg;
+                if (res < mres)
+                {
+                    res = mres;
+                    maxcnt = 1;
+                    mm = i - l + 1;
+                }
+                else if (res == mres && i - l + 1 == mm)
+                    maxcnt++;
+            }
+
+            var counter = data
+                .Skip(l-1)
+                .GroupBy(a => a)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            while (maxcnt==1 && (data[l] <= 0 || counter[data[l]] == 1))
+            {
+                if (data[l] < 0)
+                    res -= data[l];
+                counter[data[l]]--;
+                l++;
+            }
+
+            if (res == 0)
+                maxcnt = data.Length;
+                
+            return new Tuple<int, int, int>(res, maxcnt, l);
+        }
+
+        private static int solve(int[] data, out int cnt)
+        {
+            var vagg = integrate(data);
+            var max = int.MinValue;
+            var mm = int.MaxValue;
+
+            cnt = 0;
+            for (int l = 0; l < data.Length; l++)
+            {
+                var maxagg = MaxSumIncreasingSubsequence.maxSumIS(data, l);
+                var maxg = int.MinValue;
+                for (int r = l; r < data.Length; r++)
+                {
+                    maxg = Math.Max(vagg[r+1] - vagg[l] - maxagg[r], maxg);
+
+                    if (maxg == max && r - l + 1 == mm)
+                        cnt++;
+
+                    if (maxg > max)
+                    {
+                        mm = r - l + 1;
+                        cnt = 1;
+                        max = maxg;
+                    }
+                }
+            }
+
+            return max;
+        }
+
+        static int KadanesMax(int[] data, int[] maxagg)
+        {
+            var maxg = data[0] - maxagg[0];
+            var maxc = maxg;
+            for (int i = 1; i < data.Length; i++)
+            {
+                var val = data[i] - maxagg[i];
+                maxc = Math.Max(val, maxc + val);
+                if (maxc > maxg)
+                    maxg = maxc;
+            }
+            return maxg;
+        }
+
+        static Tuple<int, int> KadanesMax(int[] data)
+        {
+            var maxg = data[0];
+            int l = 0;
+            var maxc = maxg;
+            for (int i = 1; i < data.Length; i++)
+            {
+                maxc = Math.Max(data[i], maxc + data[i]);
+                if (maxc > maxg)
+                {
+                    maxg = maxc;
+                    l = i;
+                }
+            }
+            return new Tuple<int,int>(maxg, l);
+        }
+
+    }
+}

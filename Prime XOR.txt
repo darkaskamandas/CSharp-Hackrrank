@@ -1,0 +1,250 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
+using System.IO;
+using static System.Math;
+using static HackerRankUtils;
+
+class Solution {
+    
+    static int[] primes = GetPrimes(8192);
+    
+    static void Main(String[] args) {
+        int q = int.Parse(Console.ReadLine());
+        
+        while (q-->0)
+        {
+            int n = int.Parse(Console.ReadLine());
+            var array = Array.ConvertAll(Console.ReadLine().Split(), int.Parse);
+            var dict = new Dictionary<int, int>();
+            foreach(var k in array)
+            {
+                if (!dict.ContainsKey(k)) dict[k] = 0;
+                dict[k]++;
+            }
+            
+            var buckets = new int[8192];
+            var buckets2 = new int[8192];
+            buckets[0] = 1;
+            
+            foreach(var k in dict.Keys)
+            {
+                var c = dict[k];
+                long variants0 = c/2 + 1;
+                long variants1 = (c-1)/2 + 1;
+                Array.Clear(buckets2, 0, buckets2.Length);
+                for (int i=0; i<buckets.Length; i++)
+                {
+                    long v0 = buckets[i] * variants0;
+                    if (v0 >= MOD) v0 %= MOD;
+                    long v1 = buckets[k^i] * variants1;
+                    if (v1 >= MOD) v1 %= MOD;
+                    var res = (v0 + v1);
+                    if (res >= MOD)
+                        res %= MOD;
+                    buckets2[i] = (int) res;
+                }
+                Swap(ref buckets, ref buckets2);
+            }
+            
+            long count = 0;
+            foreach(var p in primes)
+                count += buckets[p];
+
+            Console.WriteLine(count % MOD);
+        }
+    }
+    
+    
+    public static BitArray GetPrimeSet(int max)
+    {
+        var isPrime = new BitArray(max + 1, true);
+
+        isPrime[0] = false;
+        isPrime[1] = false;
+
+        // Should be 4
+        for (int i = 4; i <= max; i += 2)
+            isPrime[i] = false;
+
+        for (int i = 3; i <= max; i += 2)
+        {
+            if (!isPrime[i]) continue;
+            // NOTE: Squaring causes overflow
+            for (long j = (long)i * i; j <= max; j += i + i)
+                isPrime[(int)j] = false;
+        }
+
+        return isPrime;
+    }
+    
+    public static int[] GetPrimes(int max)
+    {
+        var isPrime = GetPrimeSet(max);
+        int count = 1;
+        for (int i = 3; i <= max; i += 2)
+            if (isPrime[i])
+            count++;
+
+        var primes = new int[count];
+        int p = 0;
+        primes[p++] = 2;
+        for (int i = 3; i <= max; i += 2)
+            if (isPrime[i])
+            primes[p++] = i;
+            return primes;
+    }
+}
+
+public static class HackerRankUtils
+{
+	#region Mod Math
+	public const int MOD = 1000 * 1000 * 1000 + 7;
+
+	#endregion
+
+    #region Input
+    public static int[] N(int n)
+    {
+        return N(n, int.Parse);
+    }
+
+    public static T[] N<T>(int n, Func<string,T> func) 
+    {
+        var list = new T[n];
+        for (int i = 0; i < n; i++)
+            list[i] = func(Ns());
+        return list;
+    }
+
+    public static int N()
+    {
+        return int.Parse(Ns());
+    }
+
+    static StringBuilder _buffer = new StringBuilder();
+    public static string Ns()
+    {
+        _buffer.Clear();
+        while (true)
+        {
+            int c = Console.Read();
+            if (c < 0) break;
+            if (c > 32)
+                _buffer.Append((char)c);
+            else if (_buffer.Length > 0)
+                break;
+        }
+        return _buffer.ToString();
+    }
+    #endregion
+
+	#region Common
+
+	public static void Swap<T>(ref T a, ref T b)
+	{
+		var tmp = a;
+		a = b;
+		b = tmp;
+	}
+
+    public static int BinarySearch<T>(T[] array, T value, int left, int right, bool upper = false)
+    where T : IComparable<T>
+    {
+        while (left <= right)
+        {
+            int mid = left + (right - left) / 2;
+            int cmp = value.CompareTo(array[mid]);
+            if (cmp > 0 || cmp == 0 && upper)
+                left = mid + 1;
+            else
+                right = mid - 1;
+        }
+        return left;
+    }
+
+    #endregion
+
+    #region Comparer
+
+    public class Comparer<T> : IComparer<T>
+	{
+		readonly Comparison<T> _comparison;
+
+		public Comparer(Comparison<T> comparison)
+		{
+			_comparison = comparison;
+		}
+
+		public int Compare(T a, T b) => _comparison(a, b);
+	}
+
+    public struct Map<K,V> where V : new()
+    {
+        Dictionary<K, V> _dict;
+        public Dictionary<K, V> Dict => _dict ?? (_dict = new Dictionary<K, V>());
+        public V this[K index]
+        {
+            get
+            {
+                V value;
+                return Dict.TryGetValue(index, out value) ? value : (_dict[index] = new V());
+            }
+            set
+            {
+                Dict[index] = value;
+            }
+        }
+        public int Count => Dict.Count;
+        public Dictionary<K, V>.KeyCollection Keys => Dict.Keys;
+        public Dictionary<K, V>.ValueCollection Values => Dict.Values;
+        public Dictionary<K, V>.Enumerator GetEnumerator() => _dict.GetEnumerator();
+    }
+
+    #endregion
+
+    #region Reporting Answer
+
+    static System.Threading.Timer _timer;
+	static Func<bool> _timerAction;
+
+	public static void LaunchTimer(Func<bool> action, long ms = 2500)
+	{
+		_timerAction = action;
+		_timer = new System.Threading.Timer(
+			delegate
+			{
+#if !DEBUG
+                if (_timerAction())
+					Environment.Exit(0);
+#endif
+			}, null, ms, 0);
+	}
+
+#if DEBUG
+	static Stopwatch _stopWatch = new Stopwatch();
+#endif
+
+	public static void Run(string name, Action action)
+	{
+#if DEBUG
+		Console.Write(name + ": ");
+		_stopWatch.Restart();
+		action();
+		_stopWatch.Stop();
+		Console.WriteLine($"Elapsed Time: {_stopWatch.Elapsed}\n");
+#else
+		action();
+#endif
+	}
+
+	[Conditional("DEBUG")]
+	public static void Run2(string name, Action action)
+	{
+		// Ignore
+	}
+
+    #endregion
+}
