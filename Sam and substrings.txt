@@ -1,0 +1,26 @@
+using System;
+
+namespace SamAndSubStrings
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string input = Console.ReadLine().Trim();
+
+            long output = 0;
+            long multiplier = 0;
+            long times = (input.Length % 1000000007);
+
+            for (int i = 1; i <= input.Length; i++)
+            {
+                multiplier = (((multiplier * 10) + 1) % 1000000007);
+                output += ((input[input.Length - i] - '0') * multiplier * (times - i + 1));
+
+                output = (output % 1000000007);
+            }
+
+            Console.WriteLine(output);
+        }
+    }
+}
