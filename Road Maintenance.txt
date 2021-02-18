@@ -1,0 +1,40 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+class Solution {
+
+    /*
+     * Complete the roadMaintenance function below.
+     */
+    static int roadMaintenance(int n, int m, int[][] edges) {
+        /*
+         * Write your code here.
+         */
+        return 410;
+    }
+
+    static void Main(string[] args) {
+        TextWriter textWriter = new StreamWriter(@System.Environment.GetEnvironmentVariable("OUTPUT_PATH"), true);
+
+        string[] nm = Console.ReadLine().Split(' ');
+
+        int n = Convert.ToInt32(nm[0]);
+
+        int m = Convert.ToInt32(nm[1]);
+
+        int[][] edges = new int[n-1][];
+
+        for (int edgesRowItr = 0; edgesRowItr < n-1; edgesRowItr++) {
+            edges[edgesRowItr] = Array.ConvertAll(Console.ReadLine().Split(' '), edgesTemp => Convert.ToInt32(edgesTemp));
+        }
+
+        int result = roadMaintenance(n, m, edges);
+
+        textWriter.WriteLine(result);
+
+        textWriter.Flush();
+        textWriter.Close();
+    }
+}

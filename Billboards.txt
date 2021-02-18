@@ -1,0 +1,416 @@
+/* Enter your code here. Read input from STDIN. Print output to STDOUT */
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+
+class Solution
+{
+    private const string FileName = @"Test";
+    private const string InputFileName = @"..\..\" + FileName + ".in";
+    private const string OutputFileName = @"..\..\" + FileName + ".out";
+    private const bool MultipleCases = false;
+
+    public int N { get; private set; }
+    public int K { get; private set; }
+    public int[] BillboardProfit { get; private set; }
+
+    private Solution(InputParser input)
+    {
+        N = input.GetInt();
+        K = input.GetInt();
+        BillboardProfit = input.GetIntArray(N);
+
+        // Build a random configuration of the given size.
+        //const int MaxBillboardProfit = 10000;
+        //var r = new Random();
+        //BillboardProfit = new int[N];
+        //for (int b = 0; b < BillboardProfit.Length; ++b)
+        //{
+        //    BillboardProfit[b] = r.Next(MaxBillboardProfit + 1);
+        //}
+    }
+
+    private Solution(int k, int[] billboardProfit)
+    {
+        N = billboardProfit.Length;
+        K = k;
+        BillboardProfit = billboardProfit;
+    }
+
+    // Recursive solution to the problem that simple consider all possible selections of billboards.
+    // Only works with very small sizes.
+    private object SolveByBruteForce()
+    {
+        long maxProfit = 0;
+        SolveByBruteForce(0, 0, 0, ref maxProfit);
+        return maxProfit;
+    }
+
+    private void SolveByBruteForce(int k, int i, int accProfit, ref long maxProfit)
+    {
+        if (i == N)
+        {
+            if (accProfit > maxProfit)
+            {
+                maxProfit = accProfit;
+            }
+        }
+        else
+        {
+            // Try by skipping the current value...
+            SolveByBruteForce(0, i + 1, accProfit, ref maxProfit);
+            // ... and by accumulating it, if within the restriction.
+            if (k < K)
+            {
+                SolveByBruteForce(k + 1, i + 1, accProfit + BillboardProfit[i], ref maxProfit);
+            }
+        }
+    }
+
+    // An optimized solution that employs a dynamic programming algorithm.
+    private object SolveCase()
+    {
+        // At each point b, consider the maximum profit that can be obtained from billboards 0..b in that cases
+        // that there is a billboard in i or not. Only the elements from b-K to b are required on each iteration,
+        // so this could be easily optimized for size by using a circular queue.
+        var endingBillboardMaxProfit = new long[N];
+        var noEndingBillboardMaxProfit = new long[N];
+        endingBillboardMaxProfit[0] = BillboardProfit[0];
+        long sequenceProfit = BillboardProfit[0];
+        int sequenceLength = 1;
+        for (int b = 1; b < N; ++b)
+        {
+            // First, find the most profitable configuration that puts a billboard in the end.
+            // Find the best profit we can get of augmenting the running sequence.
+            long bestProfitOfAugmentation = 0;
+            if (sequenceLength < K)
+            {
+                // If the sequence has no limit size, it can be augmented trivially.
+                bestProfitOfAugmentation = endingBillboardMaxProfit[b - 1] + BillboardProfit[b];
+                sequenceProfit += BillboardProfit[b];
+                ++sequenceLength;
+            }
+            else
+            {
+                // Otherwise, find the best billboard to remove from the last K.
+                int bestCandidate = 0;
+                long bestProfit = 0;
+                long accSequenceProfit = 0;
+                for (int k = b - K; k < b; ++k)
+                {
+                    accSequenceProfit += BillboardProfit[k];
+                    long profit = noEndingBillboardMaxProfit[k] + (sequenceProfit - accSequenceProfit);
+                    if (profit > bestProfit)
+                    {
+                        bestCandidate = k;
+                        bestProfit = profit;
+                    }
+                }
+                bestProfitOfAugmentation = bestProfit + BillboardProfit[b];
+                sequenceLength = b - bestCandidate;
+                sequenceProfit = bestProfitOfAugmentation - noEndingBillboardMaxProfit[bestCandidate];
+            }
+
+            // Compare against the profit of starting a new sequence and pick the best option.
+            long bestProfitOfNewSequence = noEndingBillboardMaxProfit[b - 1] + BillboardProfit[b];
+            if (bestProfitOfNewSequence > bestProfitOfAugmentation)
+            {
+                endingBillboardMaxProfit[b] = bestProfitOfNewSequence;
+                sequenceProfit = BillboardProfit[b];
+                sequenceLength = 1;
+            }
+            else
+            {
+                endingBillboardMaxProfit[b] = bestProfitOfAugmentation;
+            }
+
+            // Finally, calculate the profit of the best configuration that places no billboard in the end.
+            noEndingBillboardMaxProfit[b] = Math.Max(noEndingBillboardMaxProfit[b - 1], endingBillboardMaxProfit[b - 1]);
+        }
+        return Math.Max(noEndingBillboardMaxProfit[N - 1], endingBillboardMaxProfit[N - 1]);
+    }
+
+    private static void Test()
+    {
+        const int TestCount = 10000;
+        const int MaxN = 20;
+        const int MaxBillboardProfit = 10;
+        var r = new Random();
+        for (int t = 0; t < TestCount; ++t)
+        {
+            int N = r.Next(MaxN) + 1;
+            int K = r.Next(N) + 1;
+            var billboardProfits = new int[N];
+            for (int b = 0; b < billboardProfits.Length; ++b)
+            {
+                billboardProfits[b] = r.Next(MaxBillboardProfit + 1);
+            }
+            var solver = new Solution(K, billboardProfits);
+            var solutionByBruteForce = (long)solver.SolveByBruteForce();
+            var solution = (long)solver.SolveCase();
+            if (solutionByBruteForce != solution)
+            {
+                Debug.Assert(solutionByBruteForce == solution);
+            }
+        }
+    }
+
+    static void Main(string[] args)
+    {
+        bool useFile = File.Exists(InputFileName);
+        var inputParser = useFile ? new InputParser(InputFileName) : new InputParser();
+
+        TextWriter output;
+        if (useFile)
+        {
+            File.Delete(OutputFileName);
+            output = new StreamWriter(File.OpenWrite(OutputFileName));
+        }
+        else
+        {
+            output = Console.Out;
+        }
+
+        var sw = new Stopwatch();
+        sw.Start();
+        try
+        {
+            if (MultipleCases)
+            {
+                int caseCount = inputParser.GetInt();
+                for (int c = 0; c < caseCount; ++c)
+                {
+                    output.WriteLine(string.Format("{0}", new Solution(inputParser).SolveCase()));
+                }
+            }
+            else
+            {
+                output.WriteLine(string.Format("{0}", new Solution(inputParser).SolveCase()));
+            }
+        }
+        finally
+        {
+            if (useFile)
+            {
+                output.Dispose();
+            }
+        }
+        if (useFile)
+        {
+            Console.WriteLine("Output:");
+            Console.Write(File.ReadAllText(OutputFileName));
+            Console.WriteLine("Total time: {0} ms", sw.ElapsedMilliseconds);
+            Console.ReadLine();
+        }
+    }
+}
+
+public class InputParser
+{
+    private IEnumerator<string> Elements { get; set; }
+
+    private IEnumerable<string> GetElements(IEnumerable<string> lines)
+    {
+        // Insert a null element at the end of each line.
+        return lines.SelectMany(l => Regex.Split(l, @"\s+").Concat(new string[] { null }));
+    }
+
+    private static IEnumerable<string> ReadConsoleLines()
+    {
+        string line;
+        while ((line = Console.ReadLine()) != null)
+        {
+            yield return line;
+        }
+    }
+
+    public InputParser()
+        : this(ReadConsoleLines())
+    {
+    }
+
+    public InputParser(string filename)
+        : this(File.ReadLines(filename))
+    {
+    }
+
+    public InputParser(IEnumerable<string> lines)
+    {
+        Elements = GetElements(lines).GetEnumerator();
+    }
+
+    public string GetString()
+    {
+        if (Elements.MoveNext())
+        {
+            return string.IsNullOrEmpty(Elements.Current) ? GetString() : Elements.Current;
+        }
+        else
+        {
+            throw new Exception("Tried to go past the end of the file");
+        }
+    }
+
+    public IEnumerable<string> GetStrings(int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            yield return GetString();
+        }
+    }
+
+    public string[] GetStringArray(int length)
+    {
+        return GetStrings(length).ToArray();
+    }
+
+    public IEnumerable<string> GetNextLine()
+    {
+        yield return GetString();
+        while (Elements.MoveNext() && Elements.Current != null)
+        {
+            yield return Elements.Current;
+        }
+    }
+
+    public int GetInt()
+    {
+        return int.Parse(GetString());
+    }
+
+    public int[] GetIntArray()
+    {
+        return GetNextLine().Select(i => int.Parse(i)).ToArray();
+    }
+
+    public int[] GetIntArray(int length)
+    {
+
+        return GetStrings(length).Select(i => int.Parse(i)).ToArray();
+    }
+
+    public long GetLong()
+    {
+        return long.Parse(GetString());
+    }
+
+    public long[] GetLongArray()
+    {
+        return GetNextLine().Select(i => long.Parse(i)).ToArray();
+    }
+
+    public long[] GetLongArray(int length)
+    {
+        return GetStrings(length).Select(i => long.Parse(i)).ToArray();
+    }
+
+    public float GetFloat()
+    {
+        return float.Parse(GetString());
+    }
+
+    public float[] GetFloatArray()
+    {
+        return GetNextLine().Select(i => float.Parse(i)).ToArray();
+    }
+
+    public float[] GetFloatArray(int length)
+    {
+        return GetStrings(length).Select(i => float.Parse(i)).ToArray();
+    }
+
+    public double GetDouble()
+    {
+        return double.Parse(GetString());
+    }
+
+    public double[] GetDoubleArray()
+    {
+        return GetNextLine().Select(i => double.Parse(i)).ToArray();
+    }
+
+    public double[] GetDoubleArray(int length)
+    {
+        return GetStrings(length).Select(i => double.Parse(i)).ToArray();
+    }
+
+    public char GetChar()
+    {
+        return GetString().ToCharArray().Single();
+    }
+
+    public char[] GetChars()
+    {
+        return GetString().ToCharArray();
+    }
+}
+
+public static class Utils
+{
+    /// <summary>
+    /// An implementation of ToArray that returns an array of the specified length. It can be used to force a particular length
+    /// (discarding overflowing values and setting excess elements to the default value) or to optimize the conversion when the
+    /// number of elements is known beforehand.
+    /// </summary>
+    /// <typeparam name="T">The type of the elements returned by the enumerable.</typeparam>
+    /// <param name="source">The source enumerable.</param>
+    /// <param name="length">The length of the resulting array.</param>
+    /// <returns>The array holding the elements extracted from the enumeration.</returns>
+    public static T[] ToArray<T>(this IEnumerable<T> source, int length)
+    {
+        var array = new T[length];
+        var en = source.GetEnumerator();
+        for (int i = 0; i < length && en.MoveNext(); ++i)
+        {
+            array[i] = en.Current;
+        }
+        return array;
+    }
+
+    /// <summary>
+    /// Returns an exact copy of an array.
+    /// </summary>
+    /// <typeparam name="T">The type of the array elements.</typeparam>
+    /// <param name="array">The array.</param>
+    /// <returns>An exact copy of the array.</returns>
+    public static T[] Copy<T>(this T[] array)
+    {
+        return (T[])array.Clone();
+    }
+
+    /// <summary>
+    /// Extracts a section of an array into a new array.
+    /// </summary>
+    /// <typeparam name="T">The type of the array elements.</typeparam>
+    /// <param name="array">The array.</param>
+    /// <param name="from">The index where the section starts.</param>
+    /// <param name="length">The length of the section.</param>
+    /// <returns>A new array containing the section of the array.</returns>
+    public static T[] Copy<T>(this T[] array, int from, int length)
+    {
+        T[] arrayCopy = new T[length];
+        Array.ConstrainedCopy(array, from, arrayCopy, 0, length);
+        return arrayCopy;
+    }
+
+    /// <summary>
+    /// Creates a new array with all elements initialized to a default value.
+    /// </summary>
+    /// <typeparam name="T">The type of the elements of the array.</typeparam>
+    /// <param name="defaultValue">The value to set all elements to.</param>
+    /// <param name="length">The length of the array.</param>
+    /// <returns>The new array.</returns>
+    public static T[] CreateArray<T>(T defaultValue, int length)
+    {
+        var array = new T[length];
+        for (int i = 0; i < length; ++i)
+        {
+            array[i] = defaultValue;
+        }
+        return array;
+    }
+}
