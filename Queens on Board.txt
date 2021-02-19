@@ -1,0 +1,163 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+
+class Solution
+{
+    private static int _mod = 1000000007;
+    private static int _n, _m;
+    private static bool[,] _board;
+
+    private static int[] _blocked; 
+    private static int[] _blockedMasks;
+    private static int[][] _rowPermutations;
+    private static int?[] _nextMasks;
+    private static int?[,] _solutionCount;
+
+    private static void Main(string[] args)
+    {
+        int exampleCount = int.Parse(Console.ReadLine());
+        for (int ex = 0; ex < exampleCount; ex++)
+        { 
+            string[] nmLine = Console.ReadLine().Split(' ');
+            _n = int.Parse(nmLine[0]);
+            _m = int.Parse(nmLine[1]);
+            _board = new bool[_n, _m];
+            for (int row = 0; row < _n; row++)
+            {
+                string line = Console.ReadLine();
+                for (int col = 0; col < _m; col++)
+                {
+                    _board[row, col] = line[_m - 1 - col] == '#';
+                }
+            }
+
+            Init();
+            int solutions = Solve(0, 0) - 1;
+            Console.WriteLine(solutions);
+        } 
+    }
+
+    private static int Solve(int row, int mask)
+    { 
+        if (row == _n)
+            return 1;
+
+        mask &= ~_blockedMasks[row];
+
+        if (_solutionCount[row, mask] == null)
+        {
+            int solutions = 0;
+            int[] maskPermutations = GetRowAttackMasks(_blocked[row]);
+            for (int i = 0; i < maskPermutations.Length; i++)
+            {
+                if ((mask & maskPermutations[i]) == 0)
+                {
+                    int nextMask = GetNextAttackMask(mask | maskPermutations[i]);
+                    solutions += Solve(row + 1, nextMask);
+                    solutions %= _mod; 
+                }
+            }
+
+            _solutionCount[row, mask] = solutions;
+        }
+
+        return (int)_solutionCount[row, mask];
+    }
+
+    private static void Init()
+    {
+        _blocked = new int[_n];
+        _blockedMasks = new int[_n];
+
+        for (int row = 0; row < _n; row++)
+        {
+            for (int col = 0; col < _m; col++)
+            {
+                if (_board[row, col])
+                {
+                    _blocked[row] |= 1 << col;
+                    _blockedMasks[row] |= 7 << (3 * col);
+                }
+            }
+        }
+
+        _rowPermutations = new int[(1 << (3 * _m))][];
+        _nextMasks = new int?[(1 << (_m * 3))];
+        _solutionCount = new int?[_n, (1 << (_m * 3))];
+    }
+
+    private static int GetNextAttackMask(int attackMask)
+    {
+        if (_nextMasks[attackMask] == null) // if next attackMask for this attackMask not already calculated before
+        {
+            int nextAttackMask = 0; 
+            for (int col = 0; col < _m; col++)
+            {
+                if (col > 0 && (attackMask & (1 << (3 * col))) != 0) 
+                {
+                    nextAttackMask |= 1 << (3 * col - 3);
+                }
+
+                if ((attackMask & (1 << (3 * col + 1))) != 0)
+                {
+                    nextAttackMask |= 1 << (3 * col + 1);
+                }
+
+                if (col < _m - 1 && (attackMask & (1 << (3 * col + 2))) != 0)
+                {
+                    nextAttackMask |= 1 << (3 * col + 5);
+                }
+            }
+
+            _nextMasks[attackMask] = nextAttackMask;
+        }
+        return (int)_nextMasks[attackMask];
+    }
+
+    private static int[] GetRowAttackMasks(int blocked)
+    {
+        if (_rowPermutations[blocked] == null) // if permutations for this blockedmask is not already calculated before
+        {
+            List<int> permutations = new List<int>();
+            for (int perm = 0; perm < (1 << _m); perm++)
+            {
+                if ((blocked & perm) != 0) // if a queen in permutation is at blocked square
+                    continue;
+
+                bool valid = true; // no queens in row may attack each other
+                bool attacking = false; // indicates if there is a queen attacking the square
+                for (int i = 1; i < (1 << _m) && valid; i <<= 1)
+                {
+                    if ((perm & i) != 0) // queen at position
+                    {
+                        valid = !attacking;
+                        attacking = true;
+                    }
+                    else if ((blocked & i) != 0) // at blocked position
+                    {
+                        attacking = false;
+                    }
+                }
+
+                if (valid)
+                {
+                    var mask = 0;
+                    for (int col = 0; col < _m; col++)
+                    {
+                        if ((perm & (1 << col)) != 0) // queens at col
+                        {
+                            mask |= 7 << (3 * col);
+                        }
+                    }
+                    permutations.Add(mask);
+                }
+            }
+
+            _rowPermutations[blocked] = permutations.ToArray(); // store for reuse
+        }
+
+        return _rowPermutations[blocked];
+    }
+}
